@@ -1,0 +1,57 @@
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+  interface            = "asyncio"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  sites     Site[]
+}
+
+model Site {
+  id          Int        @id @default(autoincrement())
+  siteName    String
+  stringId    String     @unique
+  userId      Int
+  createdAt   DateTime   @default(now())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categories  Category[]
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  siteId      Int
+  createdAt   DateTime  @default(now())
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  products    Product[]
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  categoryId  Int
+  createdAt   DateTime  @default(now())
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  variants    Variant[]
+}
+
+model Variant {
+  id        Int      @id @default(autoincrement())
+  name      String
+  stock     Int
+  productId Int
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}

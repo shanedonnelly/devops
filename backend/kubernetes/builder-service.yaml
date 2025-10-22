@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: builder-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: builder-service
+  template:
+    metadata:
+      labels:
+        app: builder-service
+    spec:
+      containers:
+      - name: builder-service
+        image: builder-service:latest
+        imagePullPolicy: Never
+        env:
+        - name: DATABASE_URL
+          value: postgresql://postgres:postgres@postgres:5432/sitebuilder
+        - name: MINIO_ENDPOINT
+          value: minio:9000
+        - name: MINIO_ROOT_USER
+          value: minioadmin
+        - name: MINIO_ROOT_PASSWORD
+          value: minioadmin
+        - name: SECRET_KEY
+          value: your-secret-key-change-in-production
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: builder-service
+spec:
+  selector:
+    app: builder-service
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
