@@ -8,5 +8,5 @@ Suis à la lettre toutes les instructions.
 après ça tu dois me donner tous les étapes après avoir copier les fichiers pour lancer avec docker compose up, puis avec minikube build et run. 
 l'idée c'est qu'après je dois avoir tout qui fonctionne, et un print qui me donne l'url de l'adminer, de la web ui de minio (ya le tuto) ainsi que surtout les 2 docs open api en ligne, bien documenté qui permette de try le backend. 
 N'invente rien, ne fais que ce que j'ai demandé. 
-
+Donne aussi le gitignore global.
 Donne moi tout et les étapes. (n'oublies pas de spécifié le nom du fichier concerné)

@@ -6,7 +6,7 @@ from typing import List
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.hash import bcrypt
+import bcrypt
 from prisma import Prisma
 from minio import Minio
 from minio.error import S3Error
@@ -35,6 +35,16 @@ minio_client = Minio(
 )
 
 BUCKET_NAME = "site-configs"
+
+def hash_password(password: str) -> str:
+    # Hash password using bcrypt
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    # Verify password using bcrypt
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def ensure_bucket_exists():
     # Ensure MinIO bucket exists
@@ -88,7 +98,7 @@ async def shutdown():
     except Exception as e:
         logger.error(f"Error shutting down builder service: {e}")
 
-@app.post("/api/register", response_model=TokenResponse, tags=["Authentication"])
+@app.post("/register", response_model=TokenResponse, tags=["Authentication"])
 async def register(user: UserRegister):
     # Register a new user
     logger.info(f"Registering user: {user.username}")
@@ -98,7 +108,7 @@ async def register(user: UserRegister):
             if existing_user:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
             
-            hashed_password = bcrypt.hash(user.password)
+            hashed_password = hash_password(user.password)
             new_user = await db.user.create(data={"username": user.username, "password": hashed_password})
             
             access_token = create_access_token(data={"sub": new_user.id})
@@ -110,14 +120,14 @@ async def register(user: UserRegister):
         logger.error(f"Error registering user: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.post("/api/login", response_model=TokenResponse, tags=["Authentication"])
+@app.post("/login", response_model=TokenResponse, tags=["Authentication"])
 async def login(user: UserLogin):
     # Login a user
     logger.info(f"Logging in user: {user.username}")
     try:
         async with Prisma() as db:
             db_user = await db.user.find_unique(where={"username": user.username})
-            if not db_user or not bcrypt.verify(user.password, db_user.password):
+            if not db_user or not verify_password(user.password, db_user.password):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
             
             access_token = create_access_token(data={"sub": db_user.id})
@@ -129,7 +139,7 @@ async def login(user: UserLogin):
         logger.error(f"Error logging in user: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.delete("/api/users/{id}", tags=["Users"])
+@app.delete("/users/{id}", tags=["Users"])
 async def delete_user(id: int, user_id: int = Depends(get_current_user)):
     # Delete a user
     logger.info(f"Deleting user: {id}")
@@ -147,7 +157,7 @@ async def delete_user(id: int, user_id: int = Depends(get_current_user)):
         logger.error(f"Error deleting user: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.get("/api/sites", response_model=List[SiteResponse], tags=["Sites"])
+@app.get("/sites", response_model=List[SiteResponse], tags=["Sites"])
 async def get_sites(user_id: int = Depends(get_current_user)):
     # Get all sites for a user
     logger.info(f"Getting sites for user: {user_id}")
@@ -160,7 +170,7 @@ async def get_sites(user_id: int = Depends(get_current_user)):
         logger.error(f"Error getting sites: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.post("/api/sites", response_model=SiteResponse, tags=["Sites"])
+@app.post("/sites", response_model=SiteResponse, tags=["Sites"])
 async def create_site(site: SiteCreate, user_id: int = Depends(get_current_user)):
     # Create a new site with default category, product and variant
     logger.info(f"Creating site: {site.site_name} for user: {user_id}")
@@ -195,7 +205,7 @@ async def create_site(site: SiteCreate, user_id: int = Depends(get_current_user)
         logger.error(f"Error creating site: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.delete("/api/sites/{id}", tags=["Sites"])
+@app.delete("sites/{id}", tags=["Sites"])
 async def delete_site(id: int, user_id: int = Depends(get_current_user)):
     # Delete a site
     logger.info(f"Deleting site: {id}")
@@ -219,7 +229,7 @@ async def delete_site(id: int, user_id: int = Depends(get_current_user)):
         logger.error(f"Error deleting site: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.put("/api/sites/{id}", response_model=SiteResponse, tags=["Sites"])
+@app.put("/sites/{id}", response_model=SiteResponse, tags=["Sites"])
 async def update_site(id: int, site: SiteUpdate, user_id: int = Depends(get_current_user)):
     # Update a site
     logger.info(f"Updating site: {id}")
@@ -240,7 +250,7 @@ async def update_site(id: int, site: SiteUpdate, user_id: int = Depends(get_curr
         logger.error(f"Error updating site: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.put("/api/sites/{id}/config", tags=["Sites"])
+@app.put("/sites/{id}/config", tags=["Sites"])
 async def update_site_config(id: int, config: SiteConfig, user_id: int = Depends(get_current_user)):
     # Update site configuration
     logger.info(f"Updating site config: {id}")
@@ -267,7 +277,7 @@ async def update_site_config(id: int, config: SiteConfig, user_id: int = Depends
         logger.error(f"Error updating site config: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.get("/api/sites/{string_id}/config", response_model=SiteConfig, tags=["Sites"])
+@app.get("/sites/{string_id}/config", response_model=SiteConfig, tags=["Sites"])
 async def get_site_config(string_id: str):
     # Get site configuration (public route)
     logger.info(f"Getting site config: {string_id}")
