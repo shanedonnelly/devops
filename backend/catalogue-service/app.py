@@ -10,7 +10,11 @@ from models import CatalogueResponse, CatalogueUpdate, CategoryResponse, Product
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Catalogue Service API", version="1.0.0")
+app = FastAPI(
+    title="Catalogue Service API",
+    version="1.0.0",
+    root_path="/api/catalogue-service"
+)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"

@@ -3,7 +3,7 @@
 docker compose up --build -d
 
 # Wait for services to be ready (30-60 seconds)
-sleep 60
+sleep 20
 
 # Check services status
 docker compose ps

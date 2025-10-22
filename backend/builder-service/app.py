@@ -15,7 +15,11 @@ from models import UserRegister, UserLogin, TokenResponse, SiteCreate, SiteRespo
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Builder Service API", version="1.0.0")
+app = FastAPI(
+    title="Builder Service API",
+    version="1.0.0",
+    root_path="/api/builder-service"
+)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
