@@ -1,0 +1,26 @@
+ you want to access the console, you need to do two things:
+
+    As instructed by the log message, you need to set a static console port using --console-address.
+    You need to publish this port in the ports section of your docker-compose.yml.
+
+That gives us:
+
+version: "3.7"
+services:
+    minio-image:
+        container_name: minio-image
+        build:
+            context: ./dockerfiles/dockerfile_minio
+        restart: always
+        working_dir: "/minio-image/storage"
+        volumes:
+            - ./Storage/minio/storage:/minio-image/storage
+        ports:
+            - "9000:9000"
+            - "9001:9001"
+        environment:
+            MINIO_ROOT_USER: minio-image
+            MINIO_ROOT_PASSWORD: minio-image-pass
+        command: server /minio-image/storage --console-address :9001
+
+Running the above docker-compose.yml, I can access the MinIO console at http://localhost:9001, and log in using the minio-image/minio-image-pass credentials.
