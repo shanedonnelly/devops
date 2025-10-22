@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build and start all services
-docker compose up --build -d
+docker compose up --build
 
 # Wait for services to be ready (30-60 seconds)
 sleep 5

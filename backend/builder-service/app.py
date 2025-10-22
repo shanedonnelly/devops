@@ -60,19 +60,39 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
+    # Convert user_id to string for JWT sub claim
+    if "sub" in to_encode and isinstance(to_encode["sub"], int):
+        to_encode["sub"] = str(to_encode["sub"])
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     # Decode JWT token and return user id
+    logger.info("Attempting to authenticate user from token")
     try:
         token = credentials.credentials
+        logger.info(f"Token received: {token[:20]}...")
+        
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
-        if user_id is None:
+        logger.info(f"Token decoded successfully, payload: {payload}")
+        
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
+            logger.error("Token payload missing 'sub' field")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        
+        # Convert string back to int
+        user_id = int(user_id_str)
+        logger.info(f"User authenticated successfully: {user_id}")
         return user_id
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWT decode error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except ValueError as e:
+        logger.error(f"Invalid user_id format: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    except Exception as e:
+        logger.error(f"Unexpected error during authentication: {str(e)}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 @app.on_event("startup")
@@ -112,7 +132,7 @@ async def register(user: UserRegister):
             new_user = await db.user.create(data={"username": user.username, "password": hashed_password})
             
             access_token = create_access_token(data={"sub": new_user.id})
-            logger.info(f"User registered successfully: {user.username}")
+            logger.info(f"User registered successfully: {user.username}, user_id: {new_user.id}")
             return TokenResponse(access_token=access_token, token_type="bearer")
     except HTTPException:
         raise
@@ -131,7 +151,7 @@ async def login(user: UserLogin):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
             
             access_token = create_access_token(data={"sub": db_user.id})
-            logger.info(f"User logged in successfully: {user.username}")
+            logger.info(f"User logged in successfully: {user.username}, user_id: {db_user.id}")
             return TokenResponse(access_token=access_token, token_type="bearer")
     except HTTPException:
         raise
@@ -164,7 +184,7 @@ async def get_sites(user_id: int = Depends(get_current_user)):
     try:
         async with Prisma() as db:
             sites = await db.site.find_many(where={"userId": user_id})
-            logger.info(f"Sites retrieved successfully for user: {user_id}")
+            logger.info(f"Sites retrieved successfully for user: {user_id}, count: {len(sites)}")
             return sites
     except Exception as e:
         logger.error(f"Error getting sites: {e}")
