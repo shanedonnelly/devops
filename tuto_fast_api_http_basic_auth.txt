@@ -1,0 +1,39 @@
+dans l'idée utiliser http basic auth dans fast api de cette manière : 
+# FastAPI Imports
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
+# Instatiated Variables
+security = HTTPBasic()
+app = FastAPI(dependencies=[Depends(security)])
+
+users = {
+    "admin": {
+        "password": "Password123",
+        "token": "",
+        "priviliged": True
+    }
+}
+
+# User Verification Function
+def verification(creds: HTTPBasicCredentials = Depends(security)):
+    username = creds.username
+    password = creds.password
+    if username in users and password == users[username]["password"]:
+        print("User Validated")
+        return True
+    else:
+        # From FastAPI 
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+# Path Operation Function
+@app.get("/name/{name}")
+async def search(name: str, Verifcation = Depends(verification)):
+    #If The Verification Function Successfuylly Authenticates The User Then It Will Run The Below Code
+    if Verifcation:
+        #Insert Code Here
+        return {"Hello":name}

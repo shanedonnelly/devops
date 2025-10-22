@@ -1,0 +1,42 @@
+contexte : projet scholaire ci / cd, devops, l'idée a faire : recrée un createur de site marchand à la shopify puis déployer sur minikube puis kubernetes. 
+tu vas devoir me générer une architecture micro service entière (mais pas avec broker ou decouvreur de message, c'est plus symbolique, on passera par les urls complètes de chaques services, et de toute facon yaura pas de communication micro service). 
+on va utiliser fast api pour les backend (les microservices)
+une base de donnée postgres pour tout. 
+on fera le lien entre fast api et 
+voici les tables nécessaires : 
+Modèle de données (minimal)
+//correspond aux sites générés
+• Product(id_site, id, title, description, slug, category_id, created_at, updated_at)
+• Variant(id, product_id, sku, attributes(json), price, currency, stock_qty)
+• Category(id, name, parent_id)
+//correspond à l'identification au site qu'on contruit sur le que
+User(id,password,pseudo)
+Site(id,user,label)
+// à partir de là, c'est fictif, on créera des tables mais elle seront toujours vide. 
+• Media(id, product_id, url, alt, sort_order)
+• Promotion(id, code, type, value, start_at, end_at, active)
+• Experiment(id, name, status, traffic_split, start_at, end_at)
+• VariantAssignment(id, experiment_id, user_key, arm) ← suivi A/B
+• Metrics(id, experiment_id, arm, metric_name, metric_value, ts)
+
+pour chaque microservices, je veux ces fichiers : 
+models.py // qui défini les models
+app.py (les controllers et l'app) 
+requirements.txt (sans version des package)
+Dockerfile
+
+voici les micro services et les autres conteneurs : 
+postgres : la db lié
+# builder-micro-service (/api/builder/...): 
+le backend de notre site principale, 
+il contient les routes d'atuhenfication classique creer user, et se conncecter (username, password) pas d'email, pas de modifs, juste creer son compte et se connecter, ce qui rend le token jwt classique. 
+voici ces autres fonctionnalité : 
+creer un site : 
+un site c'est simplement un nom de site, un nom unique généré en remplacent les espaces par des - et en mettant en lower le nom du site. 
+il aura un champ url qui sera donc url (à urlpublic/site/nom-unique), je vais hardcodé l'url public plus tard dans le code. 
+une route pour recuper nos sites à nous (en vérifiant notre token) et une route pour en supprimer un. 
+enfin un
+# site-micro-service
+
+
+

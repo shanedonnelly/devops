@@ -1,0 +1,51 @@
+dans l'idée utiliser primsa dans fast api de cette manière : 
+from fastapi import FastAPI
+from pydantic import BaseModel
+from prisma import Prisma
+
+app = FastAPI()
+
+
+class UserCreate(BaseModel):
+    email: str
+    name: str
+
+class UserRead(BaseModel):
+    id: int
+    email: str
+    name: str
+
+
+@app.get("/")
+async def get_user():
+    async with Prisma() as db:
+        data = await db.user.find_many()
+    return data
+
+
+@app.post("/")
+async def create_user(user: UserCreate):
+    async with Prisma() as db:
+        data = await db.user.create(
+            data=user.model_dump()
+        )
+    return data
+
+
+@app.put("/{id}")
+async def update_user(id: int, user: UserCreate):
+    async with Prisma() as db:
+        data = await db.user.update(
+            where={"id": id},
+            data=user.model_dump()
+        )
+    return data
+
+
+@app.delete("/{id}")
+async def update_user(id: int,):
+    async with Prisma() as db:
+        data = await db.user.delete(
+            where={"id": id}
+        )
+    return data

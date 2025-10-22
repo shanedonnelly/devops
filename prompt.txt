@@ -1,0 +1,43 @@
+ l'objectif est de crée un début de backend fast api, uvicorn, prisma postgresql,et http basic auth + bcrypt. très simple. le tout déployé et testé en dev dans tous les cas via docker compose. 
+pour l'instant le projet globale s'appelle : devops. 
+la DB sera dans son propre conteneur en appelant simplement l'image officielle.
+tu devras t'inspiré dans la façon de codé et utilisé les librairies des tutos que je t'ai fourni. 
+voici ce que tu dois faire : 
+crée le schema prisma adapté, 
+2 tables : 
+User : 
+- id (unique) : id
+- pseudo (unique) : string
+-hashed_password
+
+UserSite: 
+- id (unique)
+- id_user : id # l'id de l'user propriétaire. 
+- name : string
+- url : string
+
+tu ajustes le docker file et le docker compose, (il faut que le backend fast api se lance après la db pour pas de soucis),
+j'imagine qu'il faut que le docker file contient les commandes prisma generate et / ou prisma push. 
+tu crée les routes suivante : 
+/user/create, qui prends un pseudo et un mot de passe et qui crée l'user, 
+/user/getAll, qui renvoi la liste des pseudos
++ la route pour s'authentifier. 
+/site/create
+qui donc prends l'authentification et le label uniquement, l'url c'est calculé en mettant en lower le label 
+... /site/deleate/{id_site} qui doit bien sur provenir du bon user. 
+/site/get_mines 
+qui renvoie la liste des sites (id + label + url)
+de l'user authentifier. 
+
+tu vas me crée prisma.py qui va gérer la logique pure à prisma (l'init). 
+
+il faut que si la base est vide (donc à l'init)
+on crée l'user : shane, pswd : shane. 
+et le site : My site. attaché à l'user shane. 
+
+il faut des logs propre biensur, qui inidique le module qui a écrit le logs. 
+
+donne moi tout ça, toutes les étapes, vérifie le requirements, verifie tout,  normalement la seule commande à lancer sera 
+docker compose up. 
+puis tu me donnes test.sh qui va essayer toutes les routes via curl, (creer un user, s'y connecter, creer 2 sites, les lister, puis les supprimer). avec des prints et 4 secondes entre chaque test. (ce fichier n'est pas dans la prod, pas dans le déploiement). 
+
