@@ -36,4 +36,5 @@ echo "Builder Service OpenAPI Docs: http://${MINIKUBE_IP}:${NGINX_PORT}/api/buil
 echo "Catalogue Service OpenAPI Docs: http://${MINIKUBE_IP}:${NGINX_PORT}/api/catalogue-service/docs"
 echo "Adminer (Database UI): http://${MINIKUBE_IP}:${NGINX_PORT}/api/adminer"
 echo "MinIO Console: http://${MINIKUBE_IP}:${NGINX_PORT}/api/minio"
-echo "==================================="
+echo "===================================
+"
