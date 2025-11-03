@@ -1,5 +1,5 @@
 @echo off
-REM filepath: c:\Users\coren\Desktop\devops\Project\devops\backend\script\launch_docker_compose.bat
+REM filepath: devops\backend\script\launch_docker_compose.bat
 REM Build and start all services
 docker compose up --build -d
 

@@ -1,5 +1,5 @@
 @echo off
-REM filepath: c:\Users\coren\Desktop\devops\Project\devops\backend\script\start_minikube.bat
+REM filepath: devops\backend\script\start_minikube.bat
 REM Start minikube
 minikube start
 
