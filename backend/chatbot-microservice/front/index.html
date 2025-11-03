@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Chatbot — Microservice UI</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <div class="brand">
+          <h1>Stellar Chat</h1>
+          <p class="subtitle">Ask about orders, refunds, and products</p>
+        </div>
+        <div class="status" id="status">Disconnected</div>
+      </header>
+
+      <section class="chat-card">
+        <div id="messages" class="messages">
+          <div class="message bot">
+            <div class="bubble">👋 Welcome! Ask me about orders, refunds or products.</div>
+          </div>
+        </div>
+
+        <form id="composer" class="composer" autocomplete="off">
+          <input id="input" class="input" type="text" placeholder="Type a message (press Enter to send)" />
+          <button id="sendBtn" class="send" type="submit">Send</button>
+        </form>
+      </section>
+
+      <footer class="footer">
+        <small>Frontend demo — talks to POST /chat (payload: { query, state })</small>
+      </footer>
+    </main>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
