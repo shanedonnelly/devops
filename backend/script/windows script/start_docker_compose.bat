@@ -1,20 +1,22 @@
 @echo off
-REM filepath: c:\Users\coren\Desktop\devops\Project\devops\backend\script\launch_docker_compose.bat
-REM Build and start all services
+
+rem Build and start all services
 docker compose up --build -d
 
-REM Wait for services to be ready (30-60 seconds)
-timeout /t 20
+rem Wait for services to be ready
+timeout /t 5 /nobreak >nul
 
-REM Check services status
+rem Check services status
 docker compose ps
 
-REM Print access URLs
+rem Print access URLs
 echo ===================================
 echo Services are running!
 echo ===================================
-echo Builder Service OpenAPI Docs: http://localhost/api/builder-service/docs
-echo Catalogue Service OpenAPI Docs: http://localhost/api/catalogue-service/docs
-echo Adminer (Database UI): http://localhost/api/adminer
-echo MinIO Console: http://localhost/api/minio
+echo Builder Service OpenAPI: http://localhost/devops/api/builder-service/docs
+echo Catalogue Service OpenAPI: http://localhost/devops/api/catalogue-service/docs
+echo pgAdmin (Database UI): http://localhost/devops/api/pgadmin (admin@sitebuilder.com / admin)
+echo MinIO Console: http://localhost/devops/api/minio (minioadmin / minioadmin)
+echo MinIO API: http://localhost/devops/api/minio-api
 echo ===================================
+pause

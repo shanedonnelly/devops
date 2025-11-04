@@ -1,0 +1,50 @@
+==============================================
+TUTORIEL PGADMIN - Configuration PostgreSQL
+==============================================
+
+1. ACCÉDER À PGADMIN
+   - URL: http://localhost/devops/api/pgadmin
+   - Email: admin@sitebuilder.com
+   - Mot de passe: admin
+
+2. AJOUTER LE SERVEUR POSTGRESQL
+   a) Clic droit sur "Servers" dans le menu de gauche
+   b) Sélectionner "Register" > "Server..."
+   
+   c) Onglet "General":
+      - Name: SiteBuilder DB
+   
+   d) Onglet "Connection":
+      - Host name/address: postgres
+      - Port: 5432
+      - Maintenance database: sitebuilder
+      - Username: postgres
+      - Password: postgres
+      - Save password: ✓ (cocher)
+   
+   e) Cliquer sur "Save"
+
+3. EXPLORER LA BASE DE DONNÉES
+   Vous pouvez maintenant voir:
+   - Servers > SiteBuilder DB > Databases > sitebuilder
+   - Schemas > public > Tables
+   
+   Tables disponibles:
+   - User (utilisateurs)
+   - Site (sites web)
+   - Category (catégories de produits)
+   - Product (produits)
+   - Variant (variantes de produits)
+
+4. EXÉCUTER DES REQUÊTES SQL
+   - Clic droit sur "sitebuilder"
+   - Sélectionner "Query Tool"
+   - Exemple de requête:
+     SELECT * FROM "User";
+     SELECT * FROM "Site";
+
+5. VISUALISER LES DONNÉES
+   - Clic droit sur une table (ex: "User")
+   - Sélectionner "View/Edit Data" > "All Rows"
+
+==============================================

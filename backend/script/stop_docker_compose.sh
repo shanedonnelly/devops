@@ -1,1 +1,2 @@
-docker compose down -v
+docker compose down
+echo "All Docker containers removed."
