@@ -1,16 +1,9 @@
 #!/bin/bash
-
-
-
 # Build and start all services
 docker compose up --build -d
-
 # Wait for services to be ready
-sleep 5
-
 # Check services status
 docker compose ps
-
 # Print access URLs
 echo "==================================="
 echo "Services are running!"
@@ -20,5 +13,7 @@ echo "Catalogue Service OpenAPI: http://localhost/devops/api/catalogue-service/d
 echo "pgAdmin (Database UI): http://localhost/devops/api/pgadmin (admin@sitebuilder.com / admin)"
 echo "MinIO Console: http://localhost/devops/api/minio (minioadmin / minioadmin)"
 echo "==================================="
+
+sleep 6
 
 firefox http://localhost/devops/api/builder-service/docs http://localhost/devops/api/catalogue-service/docs http://localhost/devops/api/pgadmin http://localhost/devops/api/minio 

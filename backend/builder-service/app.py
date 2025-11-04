@@ -18,9 +18,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Builder Service API",
     version="1.0.0",
-    servers=[
-        {"url": "/devops/api/builder-service", "description": "Production server"}
-    ]
+    root_path="/devops/api/builder-service"
 )
 
 SECRET_KEY = os.getenv("SECRET_KEY")

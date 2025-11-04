@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Catalogue Service API",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/devops/api/catalogue-service"
 )
 
 SECRET_KEY = os.getenv("SECRET_KEY")
