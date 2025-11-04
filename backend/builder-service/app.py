@@ -18,10 +18,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Builder Service API",
     version="1.0.0",
-    root_path="/api/builder-service"
+    servers=[
+        {"url": "/devops/api/builder-service", "description": "Production server"}
+    ]
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
