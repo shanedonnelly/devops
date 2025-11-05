@@ -1,0 +1,237 @@
+Write
+
+Sign in
+Run PostgreSQL and PGAdmin using docker compose
+Vishal Sharma
+Vishal Sharma
+2 min read
+·
+Apr 20, 2023
+
+Press enter or click to view image in full size
+
+Running PostgreSQL on native operating system is always a hassle. First we have to perform the installation on the respective operating system be it Linux, Windows or MacOS. The procedure of installation varies from OS to OS.
+
+We will use Docker (docker compose precisely) to deploy PostgreSQL along with PGAdmin on the local environment.
+Get Vishal Sharma’s stories in your inbox
+
+Join Medium for free to get updates from this writer.
+
+Once you have installed docker on the local machine the setup will run despite of the type of operating system.
+
+# Create a directory and docker-compose.yml file within the directory
+mkdir postgres-docker
+cd postgres-docker
+vi docker-compose.yml
+
+The content of the docker-compose.yml file as per follow:
+
+version: "3.8"
+services:
+  db:
+    image: postgres
+    container_name: local_pgdb
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user-name
+      POSTGRES_PASSWORD: strong-password
+    volumes:
+      - local_pgdata:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
+      PGADMIN_DEFAULT_PASSWORD: strong-password
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  local_pgdata:
+  pgadmin-data:
+
+You can modify following values if you wish to:
+
+services:
+  db:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user-name
+      POSTGRES_PASSWORD: strong-password
+  pgadmin:
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: user-name@domain-name.com
+      PGADMIN_DEFAULT_PASSWORD: strong-password
+
+Run the below command to run PostgreSQL and PGAdmin in the detached mode
+
+docker-compose up -d
+
+# On latest docker version you might need to run
+
+docker compose up -d
+
+Check the docker container running status
+Press enter or click to view image in full size
+
+Now the use PGAdmin tool, open the browser and access http://localhost:8888/. Enter the username and password for PGAdmin.
+
+Now, connect to the PostgreSQL Database using DB credentials.
+Press enter or click to view image in full size
+
+It should connect with PostgreSQL DB.
+
+Thank you …
+Postgresql
+Docker
+Docker Compose
+Pgadmin
+Containers
+
+Vishal Sharma
+Written by Vishal Sharma
+103 followers
+·
+1 following
+
+IT Enthusiast, Professional, Novice Sportsperson and Fantasist of Better World. @byVishalSharma on Twitter.
+Responses (2)
+
+Write a response
+
+What are your thoughts?
+Eliezer Gensburger
+
+Eliezer Gensburger
+
+Jul 22
+
+Thanks.
+
+Enabor O
+
+Enabor O
+
+Apr 8
+
+Thank you very much for this post - helped me out with my application.
+
+More from Vishal Sharma
+Create an AWS S3 Bucket using AWS CLI
+Vishal Sharma
+
+Vishal Sharma
+Create an AWS S3 Bucket using AWS CLI
+Creating an AWS S3 (Simple Storage Service) Bucket using AWS CLI (Command Line Interface) is very easy and we can S3 Bucket using few AWS…
+Nov 12, 2019
+66
+3
+Create an AWS VPC Peering Connection
+Vishal Sharma
+
+Vishal Sharma
+Create an AWS VPC Peering Connection
+An AWS (Amazon Web Services) VPC (Virtual Private Cloud) peering connection is a networking connection between two VPCs that enables us to…
+Sep 12, 2019
+12
+Installing Angular CLI on Ubuntu
+Vishal Sharma
+
+Vishal Sharma
+Installing Angular CLI on Ubuntu
+The Angular CLI is a command-line interface tool that you use to initialize, develop, and maintain Angular applications.
+Dec 5, 2019
+70
+Setting up a self-hosted Dropbox-like Cloud Storage Service in 5 min. using AWS EC2 & AWS S3.
+Vishal Sharma
+
+Vishal Sharma
+Setting up a self-hosted Dropbox-like Cloud Storage Service in 5 min. using AWS EC2 & AWS S3.
+Dropbox is one of the market leaders in Cloud Storage. It has more than 500 million users and around 1.2 billion files are being uploaded…
+Oct 11, 2019
+26
+3
+See all from Vishal Sharma
+Recommended from Medium
+Comparing Minikube, k3s, k3d, MicroK8s, and More: Lightweight Kubernetes for Local Development
+Emircan Agac
+
+Emircan Agac
+Comparing Minikube, k3s, k3d, MicroK8s, and More: Lightweight Kubernetes for Local Development
+Kubernetes for Local Development
+May 20
+Stream Telemetry to Live Dashboards with Node-RED, ClickHouse & n8n
+Bhagya Rana
+
+Bhagya Rana
+Stream Telemetry to Live Dashboards with Node-RED, ClickHouse & n8n
+A pragmatic pipeline for high-throughput metrics — collect at the edge, query in milliseconds, automate the glue.
+5d ago
+7 Websites I Visit Every Day in 2025
+Tosny
+
+Tosny
+7 Websites I Visit Every Day in 2025
+If there is one thing I am addicted to, besides coffee, it is the internet.
+Sep 23
+6.4K
+232
+A local environment for PostgreSQL with Docker Compose
+norsys-octogone
+
+In
+
+norsys-octogone
+
+by
+
+Christophe Vaudry
+A local environment for PostgreSQL with Docker Compose
+A local PostgreSQL environment with Docker Compose for development and experimentation.
+Jun 11
+17
+1
+Simplest HA KV ever? Redis replacement Dragonfly
+Jirapong P
+
+Jirapong P
+Simplest HA KV ever? Redis replacement Dragonfly
+A blazing-fast Redis-compatible datastore with zero cluster config and effortless high availability, meet your next favorite key-value…
+May 14
+10 Postgres + pgvector Index Tricks for Fast, Cheap Retrieval
+Thinking Loop
+
+Thinking Loop
+10 Postgres + pgvector Index Tricks for Fast, Cheap Retrieval
+Practical, production-tested ways to get sub-200 ms semantic search without blowing up storage or CPU.
+Oct 8
+4
+See more recommendations
+
+Help
+
+Status
+
+About
+
+Careers
+
+Press
+
+Blog
+
+Privacy
+
+Rules
+
+Terms
+
+Text to speech
