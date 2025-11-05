@@ -1,0 +1,53 @@
+# Node dependencies
+/node_modules/
+
+# Build output
+/dist/
+/build/
+
+# Vite cache
+/.vite/
+
+# Local environment files
+.env
+.env.*.local
+.env.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+/coverage/
+
+# Misc caches
+.cache/
+
+# Optional: package manager stores (pnpm)
+.pnpm-store/
+
+# Ignore local npmrc/private keys
+.npmrc
+
+# Storybook / other local dev artifacts
+/out/
+
+# Generated lockfiles are usually committed; do NOT ignore package-lock.json / pnpm-lock.yaml by default
+
+# If you use environment-specific local secrets, ensure they're not committed
+# e.g. .env.secret, .env.local already covered above
