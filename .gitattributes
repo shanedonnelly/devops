@@ -1,0 +1,35 @@
+# Normalize line endings across platforms
+# Store files in the repository with LF. Checkouts will use the platform-native EOL
+* text=auto
+
+# Explicitly set common text file types to use LF in the repo
+*.sh     text eol=lf
+*.py     text eol=lf
+*.md     text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.js     text eol=lf
+*.jsx    text eol=lf
+*.css    text eol=lf
+*.html   text eol=lf
+
+# Keep PowerShell scripts with CRLF by default (Windows-friendly)
+*.ps1    text eol=crlf
+
+# Mark common binary files as binary so Git doesn't attempt line-ending conversions
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.zip    binary
+*.jar    binary
+*.exe    binary
+
+# Ensure node_modules are not treated as text
+node_modules/* -text
+
+# End of .gitattributes
