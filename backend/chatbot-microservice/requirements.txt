@@ -1,5 +1,0 @@
-fastapi
-uvicorn[standard]
-pydantic
-openai>=1.0.0
-fuzzywuzzy[python-Levenshtein]
