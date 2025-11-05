@@ -7,3 +7,8 @@ passlib
 bcrypt
 python-multipart
 minio
+#testing dependencies
+httpx
+pytest
+pytest-mock
+pytest-cov

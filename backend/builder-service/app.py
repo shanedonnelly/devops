@@ -225,7 +225,7 @@ async def create_site(site: SiteCreate, user_id: int = Depends(get_current_user)
         logger.error(f"Error creating site: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.delete("sites/{id}", tags=["Sites"])
+@app.delete("/sites/{id}", tags=["Sites"])
 async def delete_site(id: int, user_id: int = Depends(get_current_user)):
     # Delete a site
     logger.info(f"Deleting site: {id}")
