@@ -63,7 +63,7 @@ function Login() {
         </form>
         
         <p className="auth-link">
-          Pas encore de compte ? <a href="/devops/shanify/register">S'inscrire</a>
+          Pas encore de compte ? <button onClick={() => navigate('/register')} className="link-button">S'inscrire</button>
         </p>
       </div>
     </div>
