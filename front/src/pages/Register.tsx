@@ -8,6 +8,7 @@ function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,10 +18,12 @@ function Register() {
 
     try {
       await authApi.register({ username, password });
-      navigate('/login');
+      setSuccess('Compte créé avec succès ! Redirection...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Erreur lors de l\'inscription');
-    } finally {
       setLoading(false);
     }
   };
@@ -31,6 +34,7 @@ function Register() {
         <h1>Créer un compte</h1>
         
         {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -61,7 +65,7 @@ function Register() {
         </form>
         
         <p className="auth-link">
-          Déjà un compte ? <a href="/devops/shanify/login">Se connecter</a>
+          Déjà un compte ? <button onClick={() => navigate('/login')} className="link-button">Se connecter</button>
         </p>
       </div>
     </div>
