@@ -80,6 +80,18 @@ services:
       - catalogue-service
       - pgadmin
       - minio
+  chatbot-api:
+    build: ./chatbot-microservice
+    container_name: chatbot-api
+    env_file:
+      - ./chatbot-microservice/.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chatbot-microservice/app:/code/app
+    depends_on:
+      - catalogue-service
+      - builder-service
 
 volumes:
   postgres-data:

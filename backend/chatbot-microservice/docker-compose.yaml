@@ -1,0 +1,17 @@
+services:
+  chatbot-api:
+    # This tells Compose to build the image from the Dockerfile
+    # in the current directory ('.')
+    build: .
+    ports:
+      # Map your local port 8000 to the container's port 8000
+      - "8000:8000"
+    env_file:
+      # Tell Compose to load environment variables from a file named .env
+      - .env
+    volumes:
+      # This is the best part for development:
+      # It "mounts" your local 'app' folder into the container.
+      # Any change you make to app/main.py will instantly be
+      # seen by uvicorn, which will "hot-reload" the server.
+      - ./app:/code/app
