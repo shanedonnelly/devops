@@ -14,8 +14,7 @@ function Home() {
       
       <div className="content">
         <h1 className="title">Shanify</h1>
-        <p className="subtitle">Créez votre site web en quelques clics</p>
-        
+        <p className="subtitle">Créez votre site web en quelques clics, simple nan ?</p>
         <div className="buttons-container">
           <button 
             className="btn btn-primary"
