@@ -1,5 +1,5 @@
 docs/*
-frontend-build/*
+# frontend-build/*
 
 __pycache__/
 *.py[cod]
