@@ -124,7 +124,7 @@ function Dashboard() {
                 Ouvrir le Builder
               </button>
               <button
-                onClick={() => window.open(`/public/${site.stringId}`, '_blank')}
+                onClick={() => navigate(`/${site.stringId}`)}
                 className="btn-action btn-visit"
               >
                 Visiter
