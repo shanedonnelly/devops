@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import SiteBuilder from './pages/SiteBuilder';
+import PublicSite from './pages/PublicSite';
 import './App.css';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,8 @@ function App() {
             </PrivateRoute>
           }
         />
+        {/* Public Site Route - No authentication required */}
+        <Route path="/:stringId" element={<PublicSite />} />
       </Routes>
     </BrowserRouter>
   );
