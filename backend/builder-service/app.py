@@ -225,7 +225,7 @@ async def create_site(site: SiteCreate, user_id: int = Depends(get_current_user)
         logger.error(f"Error creating site: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.delete("sites/{id}", tags=["Sites"])
+@app.delete("/sites/{id}", tags=["Sites"])
 async def delete_site(id: int, user_id: int = Depends(get_current_user)):
     # Delete a site
     logger.info(f"Deleting site: {id}")
@@ -235,11 +235,14 @@ async def delete_site(id: int, user_id: int = Depends(get_current_user)):
             if not site or site.userId != user_id:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
             
+            # Delete config file from MinIO
             try:
                 minio_client.remove_object(BUCKET_NAME, f"{site.stringId}.json")
+                logger.info(f"Config file deleted from MinIO: {site.stringId}.json")
             except S3Error as e:
                 logger.error(f"Error deleting config file from MinIO: {e}")
             
+            # Delete site from database (CASCADE will delete categories, products, variants)
             await db.site.delete(where={"id": id})
             logger.info(f"Site deleted successfully: {id}")
             return {"message": "Site deleted successfully"}

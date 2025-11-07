@@ -10,6 +10,8 @@ function Dashboard() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [siteToDelete, setSiteToDelete] = useState<Site | null>(null);
   const [siteName, setSiteName] = useState('');
   const [editingSite, setEditingSite] = useState<Site | null>(null);
 
@@ -55,11 +57,13 @@ function Dashboard() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce site ?')) return;
+  const handleDelete = async () => {
+    if (!siteToDelete) return;
     
     try {
-      await sitesApi.delete(id);
+      await sitesApi.delete(siteToDelete.id);
+      setShowDeleteModal(false);
+      setSiteToDelete(null);
       loadSites();
     } catch (err: any) {
       alert(err.response?.data?.detail || 'Erreur lors de la suppression');
@@ -76,6 +80,11 @@ function Dashboard() {
     setEditingSite(site);
     setSiteName(site.siteName);
     setShowModal(true);
+  };
+
+  const openDeleteModal = (site: Site) => {
+    setSiteToDelete(site);
+    setShowDeleteModal(true);
   };
 
   const handleLogout = () => {
@@ -127,7 +136,7 @@ function Dashboard() {
                 Modifier
               </button>
               <button
-                onClick={() => handleDelete(site.id)}
+                onClick={() => openDeleteModal(site)}
                 className="btn-action btn-delete"
               >
                 Supprimer
@@ -160,6 +169,25 @@ function Dashboard() {
                 className="btn-confirm"
               >
                 {editingSite ? 'Modifier' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && siteToDelete && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content modal-delete" onClick={(e) => e.stopPropagation()}>
+            <h2>⚠️ Confirmer la suppression</h2>
+            <p>Êtes-vous sûr de vouloir supprimer le site <strong>{siteToDelete.siteName}</strong> ?</p>
+            <p className="warning-text">Cette action est irréversible et supprimera également toutes les données associées.</p>
+            
+            <div className="modal-actions">
+              <button onClick={() => setShowDeleteModal(false)} className="btn-cancel">
+                Annuler
+              </button>
+              <button onClick={handleDelete} className="btn-confirm btn-danger">
+                Supprimer définitivement
               </button>
             </div>
           </div>
