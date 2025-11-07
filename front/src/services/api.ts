@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TokenResponse, UserCredentials, Site, SiteConfig, SiteCreate, SiteUpdate } from '../types';
+import type { TokenResponse, UserCredentials, Site, SiteConfig, SiteCreate, SiteUpdate, CatalogueResponse, CatalogueUpdate } from '../types';
 
 const API_BASE_URL = 'http://localhost/devops/api';
 
@@ -7,7 +7,19 @@ const builderApi = axios.create({
   baseURL: `${API_BASE_URL}/builder-service`,
 });
 
+const catalogueApiClient = axios.create({
+  baseURL: `${API_BASE_URL}/catalogue-service`,
+});
+
 builderApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+catalogueApiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -54,6 +66,17 @@ export const sitesApi = {
 
   updateConfig: async (id: number, config: SiteConfig): Promise<void> => {
     await builderApi.put(`/sites/${id}/config`, config);
+  },
+};
+
+export const catalogueApi = {
+  get: async (siteStringId: string): Promise<CatalogueResponse> => {
+    const response = await catalogueApiClient.get<CatalogueResponse>(`/sites/${siteStringId}/catalogue`);
+    return response.data;
+  },
+
+  update: async (siteStringId: string, data: CatalogueUpdate): Promise<void> => {
+    await catalogueApiClient.put(`/sites/${siteStringId}/catalogue`, data);
   },
 };
 
