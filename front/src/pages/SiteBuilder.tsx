@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { sitesApi } from '../services/api';
 import type { SiteConfig, Site } from '../types';
+import { SiteTheme, THEME_INFO } from '../types/themes';
+import ThemePreview from '../components/ThemePreview';
 import './SiteBuilder.css';
 
 function SiteBuilder() {
@@ -9,7 +11,7 @@ function SiteBuilder() {
   const navigate = useNavigate();
   const [site, setSite] = useState<Site | null>(null);
   const [config, setConfig] = useState<SiteConfig>({
-    css_template: '',
+    css_template: SiteTheme.MODERN,
     title: '',
     description: '',
     contact_text: '',
@@ -121,15 +123,27 @@ function SiteBuilder() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="css">Template CSS</label>
-            <textarea
-              id="css"
+            <label htmlFor="theme">Style du Site</label>
+            <select
+              id="theme"
               value={config.css_template}
               onChange={(e) => setConfig({ ...config, css_template: e.target.value })}
-              placeholder="body { font-family: Arial; }"
-              rows={10}
-              className="css-textarea"
-            />
+              className="theme-select"
+            >
+              {Object.values(SiteTheme).map((themeId) => {
+                const themeInfo = THEME_INFO[themeId];
+                return (
+                  <option key={themeId} value={themeId}>
+                    {themeInfo.name} - {themeInfo.description}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div className="theme-preview-wrapper">
+            <h3>Aperçu du style</h3>
+            <ThemePreview theme={config.css_template as SiteTheme} />
           </div>
 
           <button type="submit" className="btn-save" disabled={saving}>
