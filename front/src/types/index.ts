@@ -30,3 +30,51 @@ export interface SiteCreate {
 export interface SiteUpdate {
   site_name: string;
 }
+
+export interface VariantCreate {
+  name: string;
+  stock: number;
+}
+
+export interface VariantResponse {
+  id: number;
+  name: string;
+  stock: number;
+  productId: number;
+}
+
+export interface ProductCreate {
+  name: string;
+  description: string;
+  price: number;
+  variants: VariantCreate[];
+}
+
+export interface ProductResponse {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  categoryId: number;
+  variants: VariantResponse[];
+}
+
+export interface CategoryCreate {
+  name: string;
+  products: ProductCreate[];
+}
+
+export interface CategoryResponse {
+  id: number;
+  name: string;
+  siteId: number;
+  products: ProductResponse[];
+}
+
+export interface CatalogueResponse {
+  categories: CategoryResponse[];
+}
+
+export interface CatalogueUpdate {
+  categories: CategoryCreate[];
+}

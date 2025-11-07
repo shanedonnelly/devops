@@ -4,6 +4,7 @@ import { sitesApi } from '../services/api';
 import type { SiteConfig, Site } from '../types';
 import { SiteTheme, THEME_INFO } from '../types/themes';
 import ThemePreview from '../components/ThemePreview';
+import CatalogueManager from '../components/CatalogueManager';
 import './SiteBuilder.css';
 
 function SiteBuilder() {
@@ -147,9 +148,14 @@ function SiteBuilder() {
           </div>
 
           <button type="submit" className="btn-save" disabled={saving}>
-            {saving ? 'Enregistrement...' : 'Enregistrer'}
+            {saving ? 'Enregistrement...' : 'Enregistrer la Configuration'}
           </button>
         </form>
+
+        <div className="catalogue-section-builder">
+          <h2>Gestion du Catalogue</h2>
+          {site && <CatalogueManager siteStringId={site.stringId} editable={true} />}
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { sitesApi } from '../services/api';
 import type { SiteConfig } from '../types';
 import { SiteTheme, THEME_STYLES } from '../types/themes';
+import CatalogueManager from '../components/CatalogueManager';
 import './PublicSite.css';
 
 function PublicSite() {
@@ -93,17 +94,11 @@ function PublicSite() {
         </div>
       </section>
 
-      <section className="catalogue-section">
-        <h2 className="catalogue-title">Notre Catalogue</h2>
-        <div className="catalogue-placeholder">
-          <div className="placeholder-icon">📦</div>
-          <p className="placeholder-text">Catalogue à venir</p>
-          <p className="placeholder-subtext">Cette fonctionnalité sera bientôt disponible</p>
-        </div>
+      <section className="catalogue-section-public">
+        {stringId && <CatalogueManager siteStringId={stringId} editable={false} />}
       </section>
 
       <footer className="site-footer">
-        <p>{config.contact_text || 'Merci de votre visite !'}</p>
         <p className="powered-by">Propulsé par Shanify</p>
       </footer>
     </div>
