@@ -4,6 +4,7 @@ import { sitesApi } from '../services/api';
 import type { SiteConfig } from '../types';
 import { SiteTheme, THEME_STYLES } from '../types/themes';
 import CatalogueManager from '../components/CatalogueManager';
+import ChatBot from '../components/ChatBot';
 import './PublicSite.css';
 
 function PublicSite() {
@@ -81,27 +82,32 @@ function PublicSite() {
   }
 
   return (
-    <div className="site-container">
-      <header className="site-header">
-        <h1 className="site-title">{config.title || 'Sans titre'}</h1>
-        <p className="site-description">{config.description || 'Aucune description'}</p>
-      </header>
+    <>
+      <div className="site-container">
+        <header className="site-header">
+          <h1 className="site-title">{config.title || 'Sans titre'}</h1>
+          <p className="site-description">{config.description || 'Aucune description'}</p>
+        </header>
 
-      <section className="site-content">
-        <div className="content-section">
-          <h2>Contact</h2>
-          <p>{config.contact_text || 'Aucune information de contact'}</p>
-        </div>
-      </section>
+        <section className="site-content">
+          <div className="content-section">
+            <h2>Contact</h2>
+            <p>{config.contact_text || 'Aucune information de contact'}</p>
+          </div>
+        </section>
 
-      <section className="catalogue-section-public">
-        {stringId && <CatalogueManager siteStringId={stringId} editable={false} />}
-      </section>
+        <section className="catalogue-section-public">
+          {stringId && <CatalogueManager siteStringId={stringId} editable={false} />}
+        </section>
 
-      <footer className="site-footer">
-        <p className="powered-by">Propulsé par Shanify</p>
-      </footer>
-    </div>
+        <footer className="site-footer">
+          <p className="powered-by">Propulsé par Shanify</p>
+        </footer>
+      </div>
+
+      {/* ChatBot floating component */}
+      <ChatBot />
+    </>
   );
 }
 
