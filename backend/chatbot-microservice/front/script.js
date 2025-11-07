@@ -4,7 +4,7 @@
   // we default to http://localhost:8000 where docker-compose exposes FastAPI.
   const API_BASE = window.API_BASE || 'http://localhost:8000';
   // Fixed site id for this page/session
-  const SITE_ID = 'test';
+  const SITE_ID = 'my-old-coffee';
   const messagesEl = document.getElementById('messages');
   const inputEl = document.getElementById('input');
   const composer = document.getElementById('composer');

@@ -83,12 +83,9 @@ services:
   chatbot-api:
     build: ./chatbot-microservice
     container_name: chatbot-api
-    env_file:
-      - ./chatbot-microservice/.env
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./chatbot-microservice/app:/code/app
+    # Retirer l'exposition du port 8000
+    environment:
+      CATALOGUE_BASE: http://catalogue-service:8000
     depends_on:
       - catalogue-service
       - builder-service
