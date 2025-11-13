@@ -26,8 +26,8 @@
   position: fixed;
   bottom: 90px;
   right: 25px;
-  width: 350px;
-  height: 480px;
+  width: 420px;
+  height: 560px;
   background: #fff;
   border-radius: 15px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -44,7 +44,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
+  padding: 12px 18px;
 }
 
 .chat-header h3 {
@@ -99,10 +99,11 @@
 
 .input-area input {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ccc;
   border-radius: 8px;
   outline: none;
+  font-size: 16px;
 }
 
 .input-area input:focus {
@@ -110,13 +111,14 @@
 }
 
 .input-area button {
-  padding: 10px 15px;
+  padding: 12px 18px;
   border: none;
   border-radius: 8px;
   background: #007bff;
   color: white;
   cursor: pointer;
   transition: 0.2s;
+  font-size: 16px;
 }
 
 .input-area button:hover {
