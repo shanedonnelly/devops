@@ -8,9 +8,9 @@ from pydantic import BaseModel
 from fuzzywuzzy import process
 
 OPENROUTER_BASE = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_KEY")
 if not OPENROUTER_API_KEY:
-    raise RuntimeError("OPENROUTER_API_KEY environment variable is not set. Please set it to your OpenRouter API key.")
+    raise RuntimeError("OPENROUTER_KEY environment variable is not set. Please set it to your OpenRouter API key.")
 
 client = OpenAI(
     base_url=OPENROUTER_BASE,
@@ -80,45 +80,11 @@ ACTION_SCHEMAS = {
 
 # --- Databases ---
 PRODUCT_CATALOG = {
-    "AstroWatch": {"price": 299.99, "stock": 50, "description": "Smartwatch with lunar cycle tracking...", "category": "Wearables"},
-    "CosmicMug": {"price": 19.50, "stock": 200, "description": "Temperature-retaining mug...", "category": "Homeware"},
-    "ZenithPad": {"price": 49.99, "stock": 100, "description": "Extra-large, ergonomic mouse pad...", "category": "Accessories"},
-    "StellarLens": {"price": 599.00, "stock": 10, "description": "Professional-grade smartphone camera attachment...", "category": "Optics"},
-    "NovaBackpack": {"price": 89.99, "stock": 30, "description": "Durable, water-resistant backpack...", "category": "Bags"},
-    "OrionBelt": {"price": 39.99, "stock": 150, "description": "Reversible leather belt...", "category": "Apparel"},
-    "GalacticSocks": {"price": 14.99, "stock": 300, "description": "Pack of 3 cotton socks...", "category": "Apparel"},
-    "EclipseShades": {"price": 129.50, "stock": 40, "description": "Polarized sunglasses...", "category": "Accessories"},
-    "PulsarHeadphones": {"price": 199.99, "stock": 25, "description": "Wireless noise-cancelling headphones...", "category": "Electronics"},
-    "QuasarCharger": {"price": 59.99, "stock": 70, "description": "High-speed 100W GaN wall charger...", "category": "Electronics"},
-    "MeteoritePen": {"price": 75.00, "stock": 50, "description": "Heavyweight executive pen...", "category": "Stationery"},
-    "NebulaNotebook": {"price": 24.99, "stock": 120, "description": "A5 dotted journal...", "category": "Stationery"},
-    "StarSailLamp": {"price": 99.00, "stock": 35, "description": "Touch-activated desk lamp...", "category": "Homeware"},
-    "TerraWallet": {"price": 49.95, "stock": 90, "description": "Slim, RFID-blocking cardholder...", "category": "Accessories"},
-    "LunarLoungePants": {"price": 65.00, "stock": 60, "description": "Ultra-soft modal pajama pants...", "category": "Apparel"},
-    "AuroraDeskMat": {"price": 34.99, "stock": 80, "description": "XL desk mat...", "category": "Accessories"},
-    "GravityBlanket": {"price": 119.00, "stock": 20, "description": "15lb weighted blanket...", "category": "Homeware"},
-    "RocketshipBookends": {"price": 45.50, "stock": 45, "description": "Set of 2 metal bookends...", "category": "Homeware"},
-    "CosmoCandle": {"price": 29.00, "stock": 100, "description": "Scented soy wax candle...", "category": "Homeware"},
-    "VoyagerWaterBottle": {"price": 32.00, "stock": 110, "description": "32oz insulated stainless steel bottle...", "category": "Homeware"},
-    "ApertureTelescope": {"price": 399.00, "stock": 15, "description": "Beginner-friendly 70mm refractor telescope...", "category": "Optics"},
-    "AndromedaTee": {"price": 28.00, "stock": 200, "description": "100% organic cotton t-shirt...", "category": "Apparel"},
-    "SaturnSphere": {"price": 55.00, "stock": 30, "description": "3D laser-etched crystal sphere...", "category": "Homeware"},
-    "BlackHoleCoasters": {"price": 22.99, "stock": 75, "description": "Set of 4 slate coasters...", "category": "Homeware"}
+
 }
 
 ORDER_DB = {
-    "ORD-2024-1001": {"status": "Shipped"}, "ORD-2024-1002": {"status": "Delivered"},
-    "ORD-2024-1003": {"status": "Processing"}, "ORD-2024-1004": {"status": "Delivered"},
-    "ORD-2024-1005": {"status": "Processing"}, "ORD-2024-1006": {"status": "Shipped"},
-    "ORD-2024-1007": {"status": "Delivered"}, "ORD-2024-1008": {"status": "Cancelled"},
-    "ORD-2024-1009": {"status": "Processing"}, "ORD-2024-1010": {"status": "Shipped"},
-    "ORD-2024-1011": {"status": "Delivered"}, "ORD-2024-1012": {"status": "Shipped"},
-    "ORD-2024-1013": {"status": "Delivered"}, "ORD-2024-1014": {"status": "Processing"},
-    "ORD-2024-1015": {"status": "Shipped"}, "ORD-2024-1016": {"status": "Delivered"},
-    "ORD-2024-1017": {"status": "Processing"}, "ORD-2024-1018": {"status": "Delivered"},
-    "ORD-2024-1019": {"status": "Cancelled"}, "ORD-2024-1020": {"status": "Shipped"},
-    "ORD-2024-1021": {"status": "Processing"}, "ORD-2024-1022": {"status": "Delivered"},
-    "ORD-2024-1023": {"status": "Shipped"}, "ORD-2024-1024": {"status": "Processing"}
+
 }
 PRODUCT_NAMES = list(PRODUCT_CATALOG.keys())
 
