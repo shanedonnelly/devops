@@ -392,10 +392,12 @@ def do_get_product_info(product_name: str, site_id: str | None = None) -> str:
         if product_name_lower in search_string:
             found_products.append(name)
 
-    if not found_products:
-        best_match, score = process.extractOne(product_name, PRODUCT_NAMES)
-        if score >= 80:
-            found_products = [best_match]
+    if not found_products and PRODUCT_NAMES:
+        match = process.extractOne(product_name, PRODUCT_NAMES)
+        if match:
+            best_match, score = match
+            if score >= 80:
+                found_products = [best_match]
 
     if not found_products:
         return f"⚠️ I'm sorry, I couldn't find any products matching '{product_name}'."

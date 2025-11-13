@@ -86,7 +86,8 @@ services:
     env_file:
       - ./chatbot-microservice/app/.env
     environment:
-      CATALOGUE_BASE: http://catalogue-service:8000
+      # catalogue-service defines FastAPI root_path, include it here for internal calls
+      CATALOGUE_BASE: http://catalogue-service:8000/devops/api/catalogue-service
     depends_on:
       - catalogue-service
       - builder-service

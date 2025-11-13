@@ -2,9 +2,13 @@
 (function(){
   // Point to your backend API. If you serve this HTML from file:// or another port,
   // we default to http://localhost:8000 where docker-compose exposes FastAPI.
-  const API_BASE = window.API_BASE || 'http://localhost:8000';
+  // Use Nginx proxy endpoints by default; if opened via file:// fallback to absolute http URL
+  const DEFAULT_BASE = (location.protocol === 'http:' || location.protocol === 'https:')
+    ? '/devops/api/chatbot'
+    : 'http://localhost/devops/api/chatbot';
+  const API_BASE = window.API_BASE || DEFAULT_BASE;
   // Fixed site id for this page/session
-  const SITE_ID = 'my-old-coffee';
+  const SITE_ID = 'omar';
   const messagesEl = document.getElementById('messages');
   const inputEl = document.getElementById('input');
   const composer = document.getElementById('composer');
@@ -51,7 +55,7 @@
 
     }catch(err){
       console.error(err);
-      appendMessage('❌ Network error — could not reach /chat. Make sure the backend is running and CORS/same-origin is satisfied.');
+  appendMessage('❌ Network error — could not reach ' + API_BASE + '/chat. Make sure the backend (via Nginx) is running.');
       statusEl.textContent = 'Error';
     }finally{
       inputEl.disabled = false;
