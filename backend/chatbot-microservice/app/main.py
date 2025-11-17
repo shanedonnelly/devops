@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fuzzywuzzy import process
 
-OPENROUTER_BASE = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_KEY")
 if not OPENROUTER_API_KEY:
     raise RuntimeError("OPENROUTER_KEY environment variable is not set. Please set it to your OpenRouter API key.")
@@ -17,7 +17,7 @@ client = OpenAI(
     api_key=OPENROUTER_API_KEY,
 )
 
-MODEL_NAME = os.getenv("CHATBOT_MODEL", "meta-llama/llama-4-maverick:free")
+MODEL_NAME =  "meta-llama/llama-3.3-70b-instruct:free"
 app = FastAPI(
     title="E-commerce Chatbot Service (Stateful)",
     description="A robust chatbot microservice using 'qwen3:4b' with a state machine"
@@ -197,7 +197,7 @@ def get_json_response(system_prompt: str, user_query: str) -> dict | None:
         response = client.chat.completions.create(
             model=MODEL_NAME,
             extra_body={
-                "models":["meta-llama/llama-4-scout:free","meta-llama/llama-3.3-8b-instruct:free"],
+                "models":["nvidia/nemotron-nano-9b-v2:free","nousresearch/hermes-3-llama-3.1-405b:free"],
             },
             messages=[
                 {"role": "system", "content": system_prompt},
