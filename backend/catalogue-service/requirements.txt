@@ -3,3 +3,4 @@ uvicorn
 prisma
 pydantic
 python-jose
+pytest
