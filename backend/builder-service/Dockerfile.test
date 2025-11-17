@@ -1,0 +1,8 @@
+FROM alpine:latest
+
+WORKDIR /app
+
+# Variable FAIL : true ou false
+ENV FAIL=true
+
+ENTRYPOINT ["sh","-c","echo 'test'; sleep 3; if [ \"$FAIL\" = \"true\" ]; then echo '❌ test failed'; exit 1; else echo '✅ test succeed'; exit 0; fi"]

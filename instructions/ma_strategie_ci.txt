@@ -1,0 +1,12 @@
+- Push sur branches features : libre, pas de CI spécifique
+- PR vers dev : déclenche la CI
+- Détection des microservices modifiés (car leurs dossier est différent) (/backend/build-service | catalogue-service | chatbot-microservice)
+  - Si modifié :
+    - Build image Docker du microservice
+    - Lancer tests unitaires via Dockerfile de test (script bash déjà fait) /backend/test/service/<servicename>-test.sh
+    - Lancer tests d'intégration/e2e avec scripts bash (.sh) dans backend/test/e2e/
+  - Si non modifié : pas de test ni build
+  - Si au moins 1 modifié : 
+    - Lancer tests d'intégration/e2e avec scripts bash (.sh) dans backend/test/e2e/
+- Modifs hors microservices (ex: /frontend) : pas de test
+- Push sur Docker Hub : uniquement après approval humain de la PR
