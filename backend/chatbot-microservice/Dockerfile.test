@@ -1,0 +1,12 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# voir les prints en temps réel (à garder)
+ENV PYTHONUNBUFFERED=1
+
+# copie le test (ou autre fichier de test si besoin)
+COPY test/test.py .
+
+# au run, exécute le test et retourne son code de sortie, s'assurer que si les tests échouent le conteneur aussi
+ENTRYPOINT ["python", "test.py"]
