@@ -2,7 +2,7 @@ import os
 import json
 import time
 from openai import OpenAI
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fuzzywuzzy import process
@@ -519,72 +519,12 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
 
 # --- API Endpoint ---
 
-def _derive_site_id(request: Request, body_site_id: str | None) -> str | None:
-    """Best-effort derivation of site_id when the frontend doesn't send it explicitly.
-
-    Priority:
-    1) body.site_id
-    2) query parameter (?site_id= / ?site= / ?sid=)
-    3) header (x-site-id / x-site / x-siteid)
-    4) Referer URL path: looks for '/devops/shanify/<siteId>' or '/shanify/<siteId>'
-    """
-    if body_site_id:
-        return body_site_id
-
-    # query params
-    try:
-        qp = request.query_params
-        for key in ("site_id", "site", "sid"):
-            if key in qp and qp[key]:
-                return qp[key]
-    except Exception:
-        pass
-
-    # headers
-    try:
-        headers = request.headers
-        for key in ("x-site-id", "x-site", "x-siteid"):
-            v = headers.get(key)
-            if v:
-                return v
-    except Exception:
-        pass
-
-    # referer
-    try:
-        ref = request.headers.get("referer") or request.headers.get("Referer")
-        if ref:
-            from urllib.parse import urlparse
-            path = urlparse(ref).path or ""
-            # split and look for 'shanify' marker
-            parts = [p for p in path.split('/') if p]
-            for i, seg in enumerate(parts):
-                if seg.lower() == "shanify" and (i + 1) < len(parts):
-                    return parts[i + 1]
-            # fallback: if pattern contains 'devops', try after it when 'shanify' missing
-            for i, seg in enumerate(parts):
-                if seg.lower() == "devops" and (i + 2) < len(parts) and parts[i + 1].lower() == "shanify":
-                    return parts[i + 2]
-    except Exception:
-        pass
-
-    return None
-
-
 @app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(query: UserQuery, request: Request):
+async def chat_endpoint(query: UserQuery):
     if not query.query:
         raise HTTPException(status_code=400, detail="Query cannot be empty")
-
-    # Derive site id if not present
-    site_id = _derive_site_id(request, query.site_id)
-    try:
-        if query.site_id != site_id:
-            print(f"[chatbot] site_id resolved to '{site_id}' (body was '{query.site_id}')")
-    except Exception:
-        pass
-
-    response_text, new_state = chatbot_main(query.query, query.state, site_id)
+    
+    response_text, new_state = chatbot_main(query.query, query.state, query.site_id)
     return ChatResponse(response=response_text, new_state=new_state)
 
 # --- Health Check ---
