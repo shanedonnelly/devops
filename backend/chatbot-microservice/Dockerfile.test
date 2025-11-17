@@ -1,0 +1,19 @@
+FROM python:3.10-slim AS base
+
+WORKDIR /code
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/code
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
+
+# Non-sensitive model hint (secret key passed at runtime if needed)
+ENV CHATBOT_MODEL=meta-llama/llama-4-maverick:free
+
+COPY ./app /code/app
+COPY ./front /code/app/front
+COPY ./test /code/test
+
+# Run tests on container start; fail hard if any test fails
+CMD ["bash", "-c", "ls -1 app | grep main.py || echo 'main.py not found'; pytest -q --disable-warnings || { echo 'Tests failed'; exit 1; }"]
