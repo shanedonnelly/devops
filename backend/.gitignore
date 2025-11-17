@@ -1,5 +1,5 @@
 docs/*
-# frontend-build/*
+nginx/frontend-build/*
 
 __pycache__/
 *.py[cod]
