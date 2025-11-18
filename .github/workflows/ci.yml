@@ -36,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash backend/test/service/builder-service-test.sh
+        working-directory: backend
 
   test-catalogue:
     needs: detect-changes
@@ -44,6 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash backend/test/service/catalogue-service-test.sh
+        working-directory: backend
 
   test-chatbot:
     needs: detect-changes
@@ -53,6 +55,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash backend/test/service/chatbot-microservice-test.sh
+        working-directory: backend
+
   e2e-tests:
     needs: [detect-changes, test-builder, test-catalogue, test-chatbot]
     if: |
@@ -68,6 +72,7 @@ jobs:
           for test in backend/test/e2e/*.sh; do
             bash "$test"
           done
+        working-directory: backend
   ci-status:
     needs: [detect-changes, test-builder, test-catalogue, test-chatbot, e2e-tests]
     if: always()

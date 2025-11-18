@@ -3,6 +3,6 @@ FROM alpine:latest
 WORKDIR /app
 
 # Variable FAIL : true ou false
-ENV FAIL=true
+ENV FAIL=false
 
 ENTRYPOINT ["sh","-c","echo 'running test for BUILDER SERVICE...'; sleep 3; if [ \"$FAIL\" = \"true\" ]; then echo '❌ test for BUILDER SERVICE failed'; exit 1; else echo '✅ test for BUILDER SERVICE succeed'; exit 0; fi"]
