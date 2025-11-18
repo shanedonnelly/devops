@@ -24,8 +24,6 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
-          base: ${{ github.event.before }}
-          ref: ${{ github.event.after }}
           filters: |
             builder:
               - 'backend/builder-service/**'
@@ -43,17 +41,9 @@ jobs:
               - 'backend/nginx/**'
               - 'front/**'
 
-  # Approbation manuelle avant push sur DockerHub
-  approval:
+  build-push-builder:
     needs: detect-changes
-    if: needs.detect-changes.outputs.any_service == 'true'
-    runs-on: ubuntu-latest
-    environment: dockerhub-push
-    steps:
-      - run: echo "✅ Deployment to DockerHub approved by ${{ github.actor }}"
-
-  push-to-dockerhub:
-    needs: [detect-changes, approval]
+    if: needs.detect-changes.outputs.builder == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,31 +54,62 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Build and Push Builder Service
-        if: needs.detect-changes.outputs.builder == 'true'
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest backend/builder-service
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest
+
+  build-push-catalogue:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.catalogue == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Build and Push Catalogue Service
-        if: needs.detect-changes.outputs.catalogue == 'true'
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest backend/catalogue-service
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest
+
+  build-push-chatbot:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.chatbot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Build and Push Chatbot Microservice
-        if: needs.detect-changes.outputs.chatbot == 'true'
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest backend/chatbot-microservice
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest
+
+  build-push-nginx:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.nginx == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       
-      - name: Setup Node.js for Nginx build
-        if: needs.detect-changes.outputs.nginx == 'true'
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
       
       - name: Build Frontend and Nginx Image
-        if: needs.detect-changes.outputs.nginx == 'true'
         run: |
           cd front
           npm i
