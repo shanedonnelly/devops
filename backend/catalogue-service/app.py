@@ -92,7 +92,7 @@ async def update_catalogue(site_string_id: str, catalogue: CatalogueUpdate, user
     except Exception as e:
         logger.error(f"Error updating catalogue: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
+# a nice little health check endpoint
 @app.get("/", tags=["Health"])
 async def root():
     return {"service": "catalogue-service", "status": "running"}
