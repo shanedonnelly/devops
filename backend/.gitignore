@@ -1,5 +1,6 @@
 docs/*
 nginx/frontend-build/*
+!nginx/frontend-build/.gitkeep
 .env
 
 __pycache__/
