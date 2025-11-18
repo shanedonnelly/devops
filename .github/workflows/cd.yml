@@ -3,6 +3,9 @@ name: CD Pipeline - Build & Push to DockerHub
 on:
   push:
     branches: [dev]
+    paths:
+      - 'backend/**'
+      - 'front/**'
 
 jobs:
   detect-changes:
@@ -16,10 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+      
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: ${{ github.event.before }}
+          ref: ${{ github.event.after }}
           filters: |
             builder:
               - 'backend/builder-service/**'
