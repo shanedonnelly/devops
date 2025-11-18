@@ -1,0 +1,98 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [dev]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      builder: ${{ steps.filter.outputs.builder }}
+      catalogue: ${{ steps.filter.outputs.catalogue }}
+      chatbot: ${{ steps.filter.outputs.chatbot }}
+      any_service: ${{ steps.filter.outputs.any_service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            builder:
+              - 'backend/builder-service/**'
+            catalogue:
+              - 'backend/catalogue-service/**'
+            chatbot:
+              - 'backend/chatbot-microservice/**'
+            any_service:
+              - 'backend/builder-service/**'
+              - 'backend/catalogue-service/**'
+              - 'backend/chatbot-microservice/**'
+
+  test-builder:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.builder == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash backend/test/service/builder-service-test.sh
+
+  test-catalogue:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.catalogue == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash backend/test/service/catalogue-service-test.sh
+
+  test-chatbot:
+    needs: detect-changes
+    # chatbot depends on catalogue, so run its tests if either changed
+    if: needs.detect-changes.outputs.chatbot == 'true' || needs.detect-changes.outputs.catalogue == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash backend/test/service/chatbot-microservice-test.sh
+  e2e-tests:
+    needs: [detect-changes, test-builder, test-catalogue, test-chatbot]
+    if: |
+      always() && 
+      needs.detect-changes.outputs.any_service == 'true' &&
+      needs.test-builder.result != 'failure' &&
+      needs.test-catalogue.result != 'failure' &&
+      needs.test-chatbot.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for test in backend/test/e2e/*.sh; do
+            bash "$test"
+          done
+
+  push-to-dockerhub:
+    needs: [detect-changes, e2e-tests]
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Push images
+        run: |
+          if [ "${{ needs.detect-changes.outputs.builder }}" == "true" ]; then
+            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest backend/builder-service
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest
+          fi
+          
+          if [ "${{ needs.detect-changes.outputs.catalogue }}" == "true" ]; then
+            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest backend/catalogue-service
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest
+          fi
+          
+          if [ "${{ needs.detect-changes.outputs.chatbot }}" == "true" ]; then
+            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest backend/chatbot-microservice
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest
+          fi
