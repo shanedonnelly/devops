@@ -1,0 +1,93 @@
+name: CD Pipeline - Build & Push to DockerHub
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      builder: ${{ steps.filter.outputs.builder }}
+      catalogue: ${{ steps.filter.outputs.catalogue }}
+      chatbot: ${{ steps.filter.outputs.chatbot }}
+      nginx: ${{ steps.filter.outputs.nginx }}
+      any_service: ${{ steps.filter.outputs.any_service }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            builder:
+              - 'backend/builder-service/**'
+            catalogue:
+              - 'backend/catalogue-service/**'
+            chatbot:
+              - 'backend/chatbot-microservice/**'
+            nginx:
+              - 'backend/nginx/**'
+              - 'front/**'
+            any_service:
+              - 'backend/builder-service/**'
+              - 'backend/catalogue-service/**'
+              - 'backend/chatbot-microservice/**'
+              - 'backend/nginx/**'
+              - 'front/**'
+
+  # Approbation manuelle avant push sur DockerHub
+  approval:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_service == 'true'
+    runs-on: ubuntu-latest
+    environment: dockerhub-push
+    steps:
+      - run: echo "✅ Deployment to DockerHub approved by ${{ github.actor }}"
+
+  push-to-dockerhub:
+    needs: [detect-changes, approval]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build and Push Builder Service
+        if: needs.detect-changes.outputs.builder == 'true'
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest backend/builder-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest
+      
+      - name: Build and Push Catalogue Service
+        if: needs.detect-changes.outputs.catalogue == 'true'
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest backend/catalogue-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest
+      
+      - name: Build and Push Chatbot Microservice
+        if: needs.detect-changes.outputs.chatbot == 'true'
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest backend/chatbot-microservice
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest
+      
+      - name: Setup Node.js for Nginx build
+        if: needs.detect-changes.outputs.nginx == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Build Frontend and Nginx Image
+        if: needs.detect-changes.outputs.nginx == 'true'
+        run: |
+          cd front
+          npm i
+          npm run build
+          cd ../backend
+          cp -r ../front/dist/* ./nginx/frontend-build/
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:latest nginx
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:latest

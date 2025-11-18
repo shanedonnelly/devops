@@ -68,31 +68,18 @@ jobs:
           for test in backend/test/e2e/*.sh; do
             bash "$test"
           done
-
-  push-to-dockerhub:
-    needs: [detect-changes, e2e-tests]
-    if: github.event.pull_request.merged == true
+  ci-status:
+    needs: [detect-changes, test-builder, test-catalogue, test-chatbot, e2e-tests]
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Push images
+      - name: Check CI Status
         run: |
-          if [ "${{ needs.detect-changes.outputs.builder }}" == "true" ]; then
-            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest backend/builder-service
-            docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest
+          if [ "${{ needs.e2e-tests.result }}" == "failure" ] || \
+             [ "${{ needs.test-builder.result }}" == "failure" ] || \
+             [ "${{ needs.test-catalogue.result }}" == "failure" ] || \
+             [ "${{ needs.test-chatbot.result }}" == "failure" ]; then
+            echo "CI failed"
+            exit 1
           fi
-          
-          if [ "${{ needs.detect-changes.outputs.catalogue }}" == "true" ]; then
-            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest backend/catalogue-service
-            docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest
-          fi
-          
-          if [ "${{ needs.detect-changes.outputs.chatbot }}" == "true" ]; then
-            docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest backend/chatbot-microservice
-            docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest
-          fi
+          echo "CI passed"
