@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot-service
+  namespace: sitebuilder
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chatbot-service
+  template:
+    metadata:
+      labels:
+        app: chatbot-service
+    spec:
+      containers:
+      - name: chatbot-service
+        image: shanedonnelly34/chatbot-microservice:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: CATALOGUE_BASE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: CATALOGUE_BASE
+        - name: OPENROUTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: OPENROUTER_KEY
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
