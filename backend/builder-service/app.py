@@ -319,6 +319,6 @@ async def get_site_config(string_id: str):
         logger.error(f"Error getting site config: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.get("/", tags=["Health"])
+@app.get("/health", tags=["Health"])
 async def root():
     return {"service": "builder-service", "status": "running"}
