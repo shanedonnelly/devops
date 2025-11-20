@@ -589,10 +589,9 @@ async def chat_endpoint(query: UserQuery, request: Request):
 
 # --- Health Check ---
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
-
+@app.get("/health", tags=["Health"])
+async def root():
+    return {"service": "chatbot-microservice", "status": "running"}
 
 @app.get("/catalogue/{site_string_id}")
 async def catalogue_proxy(site_string_id: str):
