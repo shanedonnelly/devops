@@ -2,7 +2,7 @@ docs/*
 nginx/frontend-build/*
 !nginx/frontend-build/.gitkeep
 .env
-
+kubernetes/base/secrets.yaml
 __pycache__/
 *.py[cod]
 *$py.class
