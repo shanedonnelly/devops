@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sitebuilder-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    ingress.kubernetes.io/custom-response-headers: "Access-Control-Allow-Origin:*||Access-Control-Allow-Methods:GET,POST,PUT,DELETE,OPTIONS||Access-Control-Allow-Headers:*"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - shanify.shane-donnelly.fr
+    secretName: shanify-production-tls
+  rules:
+  - host: shanify.shane-donnelly.fr
+    http:
+      paths:
+      - path: /devops/shanify
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+      - path: /devops/api/builder-service
+        pathType: Prefix
+        backend:
+          service:
+            name: builder-service
+            port:
+              number: 8000
+      - path: /devops/api/catalogue-service
+        pathType: Prefix
+        backend:
+          service:
+            name: catalogue-service
+            port:
+              number: 8000
+      - path: /devops/api/chatbot
+        pathType: Prefix
+        backend:
+          service:
+            name: chatbot-service
+            port:
+              number: 8000
+      - path: /devops/api/pgadmin
+        pathType: Prefix
+        backend:
+          service:
+            name: pgadmin-service
+            port:
+              number: 80
+      - path: /devops/api/minio
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-service
+            port:
+              number: 9001

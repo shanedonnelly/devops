@@ -1,7 +1,9 @@
 import axios from 'axios';
 import type { TokenResponse, UserCredentials, Site, SiteConfig, SiteCreate, SiteUpdate, CatalogueResponse, CatalogueUpdate } from '../types';
 
-const API_BASE_URL = 'http://localhost/devops/api';
+const API_BASE_URL = window.location.origin + "/devops/api"
+
+console.log("API_BASE_URL:", API_BASE_URL);
 
 const builderApi = axios.create({
   baseURL: `${API_BASE_URL}/builder-service`,
@@ -29,6 +31,7 @@ catalogueApiClient.interceptors.request.use((config) => {
 
 export const authApi = {
   register: async (credentials: UserCredentials): Promise<TokenResponse> => {
+    console.log(API_BASE_URL);
     const response = await builderApi.post<TokenResponse>('/register', credentials);
     return response.data;
   },

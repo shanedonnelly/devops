@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  MINIO_BROWSER_REDIRECT_URL: "https://shanify.shane-donnelly.fr/devops/api/minio"
+  MINIO_DOMAIN: "shanify.shane-donnelly.fr"
+  CATALOGUE_BASE: "https://shanify.shane-donnelly.fr/devops/api/catalogue-service"

@@ -130,3 +130,159 @@ minikube kubectl -- get events -n sitebuilder --sort-by='.lastTimestamp'
 ```bash
 minikube kubectl -- delete namespace sitebuilder
 ```
+
+
+# Commandes de debug avancées
+
+## 1. Voir les logs complets des services en échec
+
+**Builder service (tous les restarts) :**
+```bash
+minikube kubectl -- logs -n sitebuilder deployment/builder-service --all-containers=true --previous
+```
+
+**Catalogue service (tous les restarts) :**
+```bash
+minikube kubectl -- logs -n sitebuilder deployment/catalogue-service --all-containers=true --previous
+```
+
+**Logs en temps réel (streaming) :**
+```bash
+minikube kubectl -- logs -n sitebuilder -f -l app=builder-service
+```
+
+## 2. Inspecter la configuration des pods
+
+**Voir la configuration complète d'un pod :**
+```bash
+minikube kubectl -- describe pod -n sitebuilder -l app=builder-service
+```
+
+**Voir les variables d'environnement d'un pod :**
+```bash
+minikube kubectl -- exec -n sitebuilder deployment/builder-service -- env | sort
+```
+
+## 3. Tester la connectivité réseau
+
+**Test de connexion à Postgres depuis builder :**
+```bash
+minikube kubectl -- exec -n sitebuilder deployment/builder-service -- sh -c "apt update && apt install -y postgresql-client && psql postgresql://postgres:53c16ea5b106fc210fc811663b1dd915@postgres-service:5432/sitebuilder -c 'SELECT 1'"
+```
+
+**Test de connexion à MinIO depuis builder :**
+```bash
+minikube kubectl -- exec -n sitebuilder deployment/builder-service -- sh -c "curl -v http://minio-service:9000/minio/health/live"
+```
+
+**Test DNS (résolution des noms de services) :**
+```bash
+minikube kubectl -- exec -n sitebuilder deployment/builder-service -- nslookup postgres-service
+minikube kubectl -- exec -n sitebuilder deployment/builder-service -- nslookup minio-service
+```
+
+## 4. Inspecter les ressources du namespace
+
+**Vue d'ensemble complète :**
+```bash
+minikube kubectl -- get all,cm,secrets,pvc -n sitebuilder -o wide
+```
+
+**Utilisation des ressources (CPU/RAM) :**
+```bash
+minikube kubectl -- top pods -n sitebuilder
+```
+
+**Détails des endpoints (connexions réseau) :**
+```bash
+minikube kubectl -- get endpoints -n sitebuilder
+```
+
+## 5. Inspecter les ConfigMaps et Secrets
+
+**Voir le contenu de la ConfigMap :**
+```bash
+minikube kubectl -- get configmap app-config -n sitebuilder -o yaml
+```
+
+**Voir les clés des secrets (sans valeurs) :**
+```bash
+minikube kubectl -- get secret app-secrets -n sitebuilder -o jsonpath='{.data}' | jq 'keys'
+```
+
+**Décoder une valeur de secret :**
+```bash
+minikube kubectl -- get secret app-secrets -n sitebuilder -o jsonpath='{.data.DATABASE_URL}' | base64 -d
+```
+
+## 6. Vérifier les volumes persistants
+
+**Voir les PVC et leur statut :**
+```bash
+minikube kubectl -- get pvc -n sitebuilder
+```
+
+**Détails d'un PVC :**
+```bash
+minikube kubectl -- describe pvc postgres-pvc -n sitebuilder
+```
+
+**Voir les PV (volumes physiques) :**
+```bash
+minikube kubectl -- get pv
+```
+
+## 7. Tester l'application depuis l'intérieur du cluster
+
+**Lancer un pod temporaire de debug :**
+```bash
+minikube kubectl -- run -n sitebuilder curl-test --image=curlimages/curl --rm -it --restart=Never -- sh
+```
+
+Puis dedans :
+```bash
+curl http://nginx-service/devops/shanify
+curl http://builder-service:8000/
+curl http://catalogue-service:8000/
+```
+
+## 8. Historique des rollouts
+
+**Voir l'historique des déploiements :**
+```bash
+minikube kubectl -- rollout history deployment/nginx -n sitebuilder
+minikube kubectl -- rollout history deployment/builder-service -n sitebuilder
+```
+
+**Rollback au déploiement précédent :**
+```bash
+minikube kubectl -- rollout undo deployment/nginx -n sitebuilder
+```
+
+## 9. Métriques Minikube
+
+**Dashboard Kubernetes (UI graphique) :**
+```bash
+minikube dashboard
+```
+
+**Voir les addons actifs :**
+```bash
+minikube addons list
+```
+
+**Activer les métriques :**
+```bash
+minikube addons enable metrics-server
+```
+
+## 10. Export de configurations
+
+**Exporter la config complète d'un deployment :**
+```bash
+minikube kubectl -- get deployment builder-service -n sitebuilder -o yaml > builder-deployment-dump.yaml
+```
+
+---
+
+# Action immédiate recommandée
