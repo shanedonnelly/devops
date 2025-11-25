@@ -8,7 +8,7 @@ separated from the API controllers.
 import logging
 import json
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import jwt
 from io import BytesIO
@@ -46,7 +46,7 @@ class TokenService:
     def create_access_token(self, data: dict) -> str:
         """Create JWT token."""
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=self.expire_minutes)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=self.expire_minutes)
         to_encode.update({"exp": expire})
         # Convert user_id to string for JWT sub claim
         if "sub" in to_encode and isinstance(to_encode["sub"], int):

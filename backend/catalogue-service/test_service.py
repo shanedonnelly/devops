@@ -24,11 +24,11 @@ class TestTokenService:
     def test_decode_token_valid(self):
         """Test decoding a valid token."""
         from jose import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         
         # Create a valid token
         token = jwt.encode(
-            {"sub": "42", "exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"sub": "42", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             self.secret_key,
             algorithm="HS256"
         )
@@ -44,11 +44,11 @@ class TestTokenService:
     def test_decode_token_wrong_secret(self):
         """Test decoding a token with wrong secret returns None."""
         from jose import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         
         # Create token with different secret
         token = jwt.encode(
-            {"sub": "1", "exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"sub": "1", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             "different_secret",
             algorithm="HS256"
         )
@@ -59,10 +59,10 @@ class TestTokenService:
     def test_decode_token_missing_sub(self):
         """Test decoding a token without sub returns None."""
         from jose import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         
         token = jwt.encode(
-            {"exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             self.secret_key,
             algorithm="HS256"
         )
@@ -77,10 +77,10 @@ class TestTokenService:
     def test_decode_token_with_int_sub(self):
         """Test decoding token with integer sub string."""
         from jose import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         
         token = jwt.encode(
-            {"sub": "123", "exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"sub": "123", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             self.secret_key,
             algorithm="HS256"
         )
@@ -386,14 +386,14 @@ class TestIntegration:
     def test_token_and_authorization_flow(self):
         """Test the flow of token decoding and authorization check."""
         from jose import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         
         secret_key = "integration_test_secret"
         token_service = TokenService(secret_key, "HS256")
         
         # Create a token for user 42
         token = jwt.encode(
-            {"sub": "42", "exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"sub": "42", "exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             secret_key,
             algorithm="HS256"
         )

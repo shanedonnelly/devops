@@ -109,9 +109,9 @@ class TestTokenService:
         """Test decoding a token without sub returns None."""
         # Create a token manually without sub
         from jose import jwt
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
         token = jwt.encode(
-            {"exp": datetime.utcnow() + timedelta(minutes=30)},
+            {"exp": datetime.now(timezone.utc) + timedelta(minutes=30)},
             self.secret_key,
             algorithm="HS256"
         )
