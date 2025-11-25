@@ -1,7 +1,11 @@
 import axios from 'axios';
 import type { TokenResponse, UserCredentials, Site, SiteConfig, SiteCreate, SiteUpdate, CatalogueResponse, CatalogueUpdate } from '../types';
 
-const API_BASE_URL = window.location.origin + "/devops/api"
+// Détection environnement dev
+const isDev = window.location.port === '5173';
+const API_BASE_URL = isDev 
+  ? 'http://localhost/devops/api' 
+  : window.location.origin + '/devops/api';
 
 console.log("API_BASE_URL:", API_BASE_URL);
 

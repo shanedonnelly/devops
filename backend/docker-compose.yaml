@@ -68,7 +68,9 @@ services:
         condition: service_healthy
 
   nginx:
-    build: ./nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.compose
     container_name: nginx
     ports:
       - "80:80"
