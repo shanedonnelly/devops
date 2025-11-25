@@ -1,6 +1,6 @@
-fastapi
+fastapi==0.122.0
 uvicorn[standard]
-pydantic
+pydantic==2.12.4
 openai>=1.0.0
 fuzzywuzzy[python-Levenshtein]
 requests
