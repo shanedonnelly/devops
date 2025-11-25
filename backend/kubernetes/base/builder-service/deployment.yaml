@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: catalogue-service
-  namespace: sitebuilder
+  name: builder-service
+
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: catalogue-service
+      app: builder-service
   template:
     metadata:
       labels:
-        app: catalogue-service
+        app: builder-service
     spec:
       containers:
-      - name: catalogue-service
-        image: shanedonnelly34/catalogue-service:latest
+      - name: builder-service
+        image: shanedonnelly34/builder-service:latest
         ports:
         - containerPort: 8000
         env:
@@ -24,6 +24,21 @@ spec:
             configMapKeyRef:
               name: app-config
               key: DATABASE_URL
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MINIO_ROOT_USER
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: MINIO_ROOT_PASSWORD
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:

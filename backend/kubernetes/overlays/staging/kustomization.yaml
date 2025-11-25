@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sitebuilder-staging
+
+resources:
+  - ../../base
+  - ingress.yaml
+
+patches:
+  - path: configmap-patch.yaml
+    target:
+      kind: ConfigMap
+      name: app-config
+
+images:
+  - name: shanedonnelly34/builder-service
+    newTag: latest
+  - name: shanedonnelly34/catalogue-service
+    newTag: latest
+  - name: shanedonnelly34/chatbot-microservice
+    newTag: latest
+  - name: shanedonnelly34/nginx
+    newTag: latest
