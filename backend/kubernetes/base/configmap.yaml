@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  POSTGRES_DB: "sitebuilder"
+  POSTGRES_USER: "postgres"
+  PGADMIN_DEFAULT_EMAIL: "admin@sitebuilder.com"
+  MINIO_ROOT_USER: "minioadmin"
+  DATABASE_URL: "postgresql://postgres:53c16ea5b106fc210fc811663b1dd915@postgres-service:5432/sitebuilder"
+  MINIO_ENDPOINT: "minio-service:9000"
+  CATALOGUE_BASE: "http://catalogue-service:8000"

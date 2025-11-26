@@ -1,0 +1,21 @@
+.theme-preview-container {
+  margin-top: 2rem;
+  border: 3px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+
+.theme-preview-content {
+  transform: scale(0.5);
+  transform-origin: top left;
+  width: 200%;
+  height: 600px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .theme-preview-content {
+    transform: scale(0.35);
+  }
+}

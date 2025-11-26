@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from datetime import datetime
 from typing import Optional
 
 class UserRegister(BaseModel):
@@ -16,15 +17,17 @@ class TokenResponse(BaseModel):
 class SiteCreate(BaseModel):
     site_name: str
 
+class SiteUpdate(BaseModel):
+    site_name: str
+
 class SiteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     siteName: str
     stringId: str
     userId: int
-    createdAt: str
-
-class SiteUpdate(BaseModel):
-    site_name: str
+    createdAt: datetime
 
 class SiteConfig(BaseModel):
     css_template: str

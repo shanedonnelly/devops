@@ -1,0 +1,20 @@
+#!/bin/bash
+# Build and start all services
+docker compose up --build -d
+# Wait for services to be ready
+# Check services status
+docker compose ps
+# Print access URLs
+echo "==================================="
+echo "Services are running!"
+echo "==================================="
+echo "Builder Service OpenAPI: http://localhost/devops/api/builder-service/docs"
+echo "Catalogue Service OpenAPI: http://localhost/devops/api/catalogue-service/docs"
+echo "pgAdmin (Database UI): http://localhost/devops/api/pgadmin (admin@sitebuilder.com / admin)"
+echo "MinIO Console: http://localhost/devops/api/minio (minioadmin / minioadmin)"
+echo " Front end of shanify : http://localhost/devops/shanify"
+echo "==================================="
+
+sleep 6
+
+firefox http://localhost/devops/api/builder-service/docs http://localhost/devops/api/catalogue-service/docs http://localhost/devops/api/pgadmin http://localhost/devops/api/minio http://localhost/devops/shanify

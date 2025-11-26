@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 RUN prisma generate
 
 CMD ["sh", "-c", "prisma db push && uvicorn app:app --host 0.0.0.0 --port 8000"]

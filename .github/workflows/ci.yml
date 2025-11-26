@@ -1,0 +1,142 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [dev]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      builder: ${{ steps.filter.outputs.builder }}
+      catalogue: ${{ steps.filter.outputs.catalogue }}
+      chatbot: ${{ steps.filter.outputs.chatbot }}
+      any_service: ${{ steps.filter.outputs.any_service }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            builder:
+              - 'backend/builder-service/**'
+            catalogue:
+              - 'backend/catalogue-service/**'
+            chatbot:
+              - 'backend/chatbot-microservice/**'
+            any_service:
+              - 'backend/builder-service/**'
+              - 'backend/catalogue-service/**'
+              - 'backend/chatbot-microservice/**'
+
+  build-builder:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.builder == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Builder Service Image
+        run: docker build -t builder-service:ci backend/builder-service
+      
+      - name: Clean up Builder Image
+        if: always()
+        run: docker rmi builder-service:ci || true
+
+  build-catalogue:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.catalogue == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Catalogue Service Image
+        run: docker build -t catalogue-service:ci backend/catalogue-service
+      
+      - name: Clean up Catalogue Image
+        if: always()
+        run: docker rmi catalogue-service:ci || true
+
+  build-chatbot:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.chatbot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Chatbot Microservice Image
+        run: docker build -t chatbot-microservice:ci backend/chatbot-microservice
+      
+      - name: Clean up Chatbot Image
+        if: always()
+        run: docker rmi chatbot-microservice:ci || true
+
+  test-builder:
+    needs: [detect-changes, build-builder]
+    if: needs.detect-changes.outputs.builder == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash test/service/builder-service-test.sh
+        working-directory: backend
+
+  test-catalogue:
+    needs: [detect-changes, build-catalogue]
+    if: needs.detect-changes.outputs.catalogue == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash test/service/catalogue-service-test.sh
+        working-directory: backend
+
+  test-chatbot:
+    needs: [detect-changes, build-chatbot, build-catalogue]
+    # chatbot depends on catalogue, so run its tests if either changed and builds succeeded
+    if: |
+      (needs.detect-changes.outputs.chatbot == 'true' || needs.detect-changes.outputs.catalogue == 'true') &&
+      (needs.build-chatbot.result == 'success' || needs.build-chatbot.result == 'skipped') &&
+      (needs.build-catalogue.result == 'success' || needs.build-catalogue.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash test/service/chatbot-microservice-test.sh
+        working-directory: backend
+
+  e2e-tests:
+    needs: [detect-changes, build-builder, build-catalogue, build-chatbot, test-builder, test-catalogue, test-chatbot]
+    if: |
+      always() && 
+      needs.detect-changes.outputs.any_service == 'true' &&
+      needs.build-builder.result != 'failure' &&
+      needs.build-catalogue.result != 'failure' &&
+      needs.build-chatbot.result != 'failure' &&
+      needs.test-builder.result != 'failure' &&
+      needs.test-catalogue.result != 'failure' &&
+      needs.test-chatbot.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for test in test/e2e/*.sh; do
+            bash "$test"
+          done
+        working-directory: backend
+
+  ci-status:
+    needs: [detect-changes, build-builder, build-catalogue, build-chatbot, test-builder, test-catalogue, test-chatbot, e2e-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI Status
+        run: |
+          if [ "${{ needs.build-builder.result }}" == "failure" ] || \
+             [ "${{ needs.build-catalogue.result }}" == "failure" ] || \
+             [ "${{ needs.build-chatbot.result }}" == "failure" ] || \
+             [ "${{ needs.e2e-tests.result }}" == "failure" ] || \
+             [ "${{ needs.test-builder.result }}" == "failure" ] || \
+             [ "${{ needs.test-catalogue.result }}" == "failure" ] || \
+             [ "${{ needs.test-chatbot.result }}" == "failure" ]; then
+            echo "CI failed"
+            exit 1
+          fi
+          echo "CI passed"

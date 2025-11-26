@@ -1,0 +1,1 @@
+firefox http://localhost/devops/api/builder-service/docs http://localhost/devops/api/catalogue-service/docs http://localhost/devops/api/pgadmin http://localhost/devops/api/minio http://localhost/devops/shanify

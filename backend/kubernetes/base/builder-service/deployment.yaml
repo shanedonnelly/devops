@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: builder-service
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: builder-service
+  template:
+    metadata:
+      labels:
+        app: builder-service
+    spec:
+      containers:
+      - name: builder-service
+        image: shanedonnelly34/builder-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: DATABASE_URL
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MINIO_ROOT_USER
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: SECRET_KEY
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5

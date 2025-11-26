@@ -3,28 +3,36 @@ services:
     image: postgres:latest
     container_name: postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: sitebuilder
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
 
   minio:
     image: minio/minio:latest
     container_name: minio
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost/devops/api/minio
+      MINIO_DOMAIN: localhost
     volumes:
       - minio-data:/data
     command: server /data --console-address :9001
@@ -32,27 +40,17 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
-      retries: 5
-
-  adminer:
-    image: adminer:latest
-    container_name: adminer
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
+      retries: 3
 
   builder-service:
     build: ./builder-service
     container_name: builder-service
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sitebuilder
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       MINIO_ENDPOINT: minio:9000
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      SECRET_KEY: your-secret-key-change-in-production
-    ports:
-      - "8001:8000"
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,27 +61,36 @@ services:
     build: ./catalogue-service
     container_name: catalogue-service
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sitebuilder
-      SECRET_KEY: your-secret-key-change-in-production
-    ports:
-      - "8002:8000"
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
     depends_on:
       postgres:
         condition: service_healthy
 
   nginx:
-    image: nginx:latest
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile.compose
     container_name: nginx
     ports:
       - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - builder-service
       - catalogue-service
-      - adminer
+      - pgadmin
       - minio
+
+  chatbot-api:
+    build: ./chatbot-microservice
+    container_name: chatbot-api
+    environment:
+      CATALOGUE_BASE: http://nginx/devops/api/catalogue-service
+      OPENROUTER_KEY: ${OPENROUTER_KEY}
+    depends_on:
+      - catalogue-service
+      - builder-service
 
 volumes:
   postgres-data:
+  pgadmin-data:
   minio-data:

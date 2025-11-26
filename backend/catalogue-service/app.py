@@ -9,31 +9,31 @@ from models import CatalogueResponse, CatalogueUpdate, CategoryResponse, Product
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+# a la con
 app = FastAPI(
     title="Catalogue Service API",
     version="1.0.0",
-    root_path="/api/catalogue-service"
+    root_path="/devops/api/catalogue-service"
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 
 security = HTTPBearer()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    # Decode JWT token and return user id
     try:
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
-        if user_id is None:
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        user_id = int(user_id_str)  # Convertir string en int
         return user_id
-    except JWTError:
+    except (JWTError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-@app.get("/api/sites/{site_string_id}/catalogue", response_model=CatalogueResponse, tags=["Catalogue"])
+@app.get("/sites/{site_string_id}/catalogue", response_model=CatalogueResponse, tags=["Catalogue"])
 async def get_catalogue(site_string_id: str):
     # Get entire catalogue for a site (public route)
     logger.info(f"Getting catalogue for site: {site_string_id}")
@@ -60,7 +60,7 @@ async def get_catalogue(site_string_id: str):
         logger.error(f"Error getting catalogue: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
-@app.put("/api/sites/{site_string_id}/catalogue", tags=["Catalogue"])
+@app.put("/sites/{site_string_id}/catalogue", tags=["Catalogue"])
 async def update_catalogue(site_string_id: str, catalogue: CatalogueUpdate, user_id: int = Depends(get_current_user)):
     # Update entire catalogue for a site (owner only)
     logger.info(f"Updating catalogue for site: {site_string_id}")
@@ -92,7 +92,7 @@ async def update_catalogue(site_string_id: str, catalogue: CatalogueUpdate, user
     except Exception as e:
         logger.error(f"Error updating catalogue: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-
-@app.get("/", tags=["Health"])
+# a nice little health check endpoint
+@app.get("/health", tags=["Health"])
 async def root():
     return {"service": "catalogue-service", "status": "running"}
