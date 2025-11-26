@@ -45,29 +45,13 @@ class ChatResponse(BaseModel):
 CLASSIFICATION_SCHEMA = {
     "type": "object",
     "properties": {
-        "intent": {"type": "string", "enum": ["ORDER_STATUS", "CATALOG_SEARCH", "REFUND", "GREETING", "HELP", "OTHER"]},
+        "intent": {"type": "string", "enum": ["CATALOG_SEARCH", "GREETING", "HELP", "OTHER"]},
         "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0}
     },
     "required": ["intent", "confidence"]
 }
 
 ACTION_SCHEMAS = {
-    "ORDER_STATUS": {
-        "type": "object",
-        "properties": {
-            "action_type": {"type": "string", "enum": ["CHECK_ORDER_STATUS"]},
-            "order_id": {"type": "string", "description": "The order ID, e.g., ORD-2024-1003. Extract null if not provided."}
-        },
-        "required": ["action_type", "order_id"]
-    },
-    "REFUND": {
-        "type": "object",
-        "properties": {
-            "action_type": {"type": "string", "enum": ["REQUEST_REFUND"]},
-            "order_id": {"type": "string", "description": "The order ID, e.g., ORD-2024-1008. Extract null if not provided."}
-        },
-        "required": ["action_type", "order_id"]
-    },
     "CATALOG_SEARCH": {
         "type": "object",
         "properties": {
@@ -83,9 +67,6 @@ PRODUCT_CATALOG = {
 
 }
 
-ORDER_DB = {
-
-}
 PRODUCT_NAMES = list(PRODUCT_CATALOG.keys())
 
 # --- Catalogue service wiring ---
@@ -183,7 +164,6 @@ def _flatten_products_from_catalogue(cat: dict) -> list:
             }
             products.append(prod)
     return products
-
 # --- Core Chatbot Logic ---
 
 def get_json_response(system_prompt: str, user_query: str) -> dict | None:
@@ -234,19 +214,15 @@ def get_json_response(system_prompt: str, user_query: str) -> dict | None:
             return None
 
 def classify_intent(user_query: str) -> dict:
-    """Classifies user intent using a more robust 'few-shot' prompt."""
-    
-    # (UPDATED) Added REFUND examples
+    """Classifies user intent using a few-shot prompt (catalog search, help, greeting, other)."""
+
     system_prompt = f"""
     You are an expert intent classification agent. Classify the user's query
-    into one of the following intents: ORDER_STATUS, REFUND, CATALOG_SEARCH, GREETING, HELP, OTHER.
+    into one of the following intents: CATALOG_SEARCH, GREETING, HELP, OTHER.
 
     Here are some examples:
     User: "Hello there!" -> {{"intent": "GREETING", "confidence": 1.0}}
-    User: "Where is my package ORD-2024-1002?" -> {{"intent": "ORDER_STATUS", "confidence": 1.0}}
     User: "Do you sell smartwatches?" -> {{"intent": "CATALOG_SEARCH", "confidence": 1.0}}
-    User: "I want a refund." -> {{"intent": "REFUND", "confidence": 1.0}}
-    User: "I need to return order 1008" -> {{"intent": "REFUND", "confidence": 1.0}}
     User: "help" -> {{"intent": "HELP", "confidence": 1.0}}
     User: "What can you do?" -> {{"intent": "HELP", "confidence": 1.0}}
     User: "What's the weather?" -> {{"intent": "OTHER", "confidence": 1.0}}
@@ -254,7 +230,7 @@ def classify_intent(user_query: str) -> dict:
     Respond *only* with a valid JSON object matching this schema:
     {json.dumps(CLASSIFICATION_SCHEMA)}
     """
-    
+
     result = get_json_response(system_prompt, user_query)
     if result:
         return result
@@ -267,19 +243,7 @@ def extract_action(intent: str, user_query: str) -> dict:
         return {"action_type": "NO_ACTION"}
 
     examples = ""
-    if intent == "ORDER_STATUS":
-        examples = """
-        Here are some examples:
-        User: "Where is my package ORD-2024-1002?" -> {"action_type": "CHECK_ORDER_STATUS", "order_id": "ORD-2024-1002"}
-        User: "Status update for ord-2024-1003 please." -> {"action_type": "CHECK_ORDER_STATUS", "order_id": "ORD-2024-1003"}
-        """
-    elif intent == "REFUND":
-        examples = """
-        Here are some examples:
-        User: "I need a refund for my order." -> {"action_type": "REQUEST_REFUND", "order_id": null}
-        User: "I want to return order ORD-2024-1008." -> {"action_type": "REQUEST_REFUND", "order_id": "ORD-2024-1008"}
-        """
-    elif intent == "CATALOG_SEARCH":
+    if intent == "CATALOG_SEARCH":
         examples = """
         Here are some examples:
         User: "Tell me about the AstroWatch" -> {"action_type": "GET_PRODUCT_INFO", "product_name": "AstroWatch"}
@@ -295,7 +259,7 @@ def extract_action(intent: str, user_query: str) -> dict:
     Respond *only* with a valid JSON object matching this schema:
     {json.dumps(schema)}
     """
-    
+
     result = get_json_response(system_prompt, user_query)
     if result:
         return result
@@ -303,39 +267,7 @@ def extract_action(intent: str, user_query: str) -> dict:
 
 # --- Logic Functions ---
 
-def do_check_order_status(order_id: str) -> str:
-    """Looks up an order and returns a response string."""
-    if not order_id or order_id == "null":
-        return "I can't seem to find an order ID. Please provide an ID (e.g., ORD-2024-1001)."
-
-    order_id = order_id.upper()
-    if order_id in ORDER_DB:
-        order = ORDER_DB[order_id]
-        return f"✅ Order {order_id} is currently {order['status']}."
-    else:
-        return f"⚠️ I couldn't find an order with the ID '{order_id}'. Please check the ID."
-
-def do_refund(order_id: str) -> str:
-    """Handles the business logic for a refund request."""
-    if not order_id or order_id == "null":
-        # This case should be handled by the state machine, but as a fallback:
-        return "I can't seem to find an order ID. Please provide an ID (e.g., ORD-2024-1001)."
-
-    order_id = order_id.upper()
-    if order_id not in ORDER_DB:
-        return f"⚠️ I couldn't find an order with the ID '{order_id}'. Please check the ID."
-
-    status = ORDER_DB[order_id]["status"]
-    if status == "Cancelled":
-        return f"✅ Order {order_id} is already cancelled. No refund is necessary."
-    if status == "Delivered":
-        return f"✅ Order {order_id} was delivered. I have started a return request for you. Please check your email for a shipping label."
-    if status == "Processing":
-        ORDER_DB[order_id]["status"] = "Cancelled" # Mock update
-        return f"✅ Order {order_id} is still 'Processing'. I have successfully cancelled the order and a refund will be issued."
-    if status == "Shipped":
-        return f"⚠️ Order {order_id} has already 'Shipped'. Please wait for the item to be delivered, then contact us for a return."
-    return "I'm not sure how to handle a refund for this order. Let me get a human agent."
+# Order-related functionality removed: orders/refunds are not implemented.
 
 def do_get_product_info(product_name: str, site_id: str | None = None) -> str:
     """Looks up a product and returns a response string."""
@@ -431,18 +363,7 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
     # --- Step 1: Handle any existing state FIRST ---
     # This is the most important part.
     
-    if state == "AWAITING_ORDER_ID_FOR_STATUS":
-        # The user's query is the order ID.
-        # We completely bypass classification.
-        response = do_check_order_status(user_query)
-        return response, None # Clear state after handling
-    
-    if state == "AWAITING_ORDER_ID_FOR_REFUND":
-        # The user's query is the order ID.
-        # We bypass classification and run the refund logic.
-        response = do_refund(user_query)
-        return response, None # Clear state after handling
-        
+    # No order state handling — orders/refunds not implemented
     if state == "AWAITING_PRODUCT_NAME":
         # The user's query is the product name.
         response = do_get_product_info(user_query, site_id)
@@ -460,25 +381,21 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
         response = "👋 Hello! How can I assist you today?"
         return response, None
 
-    # (NEW) Full help text
+    # Full help text (orders not supported)
     if intent == "HELP":
         response = (
             "I am a customer service assistant. Here is what I can do for you:\n\n"
-            "**📦 Order Support**\n"
-            "You can ask me to check the status of an order or request a refund.\n"
-            "*Example: 'Where is my order?'*\n"
-            "*Example: 'I need to return order ORD-2024-1008'*\n\n"
             "**🛍️ Product Catalog**\n"
             "You can ask me about any product we sell, or ask for items by category.\n"
             "*Example: 'Tell me about the AstroWatch'*\n"
             "*Example: 'Do you sell any headphones?'*\n\n"
-            "If I need more information, like an order ID, I will ask you for it. "
-            "You can then just provide the missing info in your next message."
+            "If I need more information to answer, I will ask you for it. "
+            "You can then provide the missing info in your next message."
         )
         return response, None
 
     if intent == "OTHER":
-        response = "🤔 I'm sorry, I can only help with order status, refunds, or product questions."
+        response = "🤔 I'm sorry, I can only help with product questions or provide general help."
         return response, None
 
     # --- Step 3: Extract action for new, valid intents ---
@@ -486,23 +403,7 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
     action = extract_action(intent, user_query)
     action_type = action.get("action_type")
     
-    if action_type == "CHECK_ORDER_STATUS":
-        order_id = action.get("order_id")
-        if not order_id or order_id == "null":
-            # (FIX) Set the specific state
-            response = "I can help with that! What is your order ID (e.g., ORD-2024-1001)?"
-            return response, "AWAITING_ORDER_ID_FOR_STATUS" 
-        response = do_check_order_status(order_id)
-        return response, None
-
-    if action_type == "REQUEST_REFUND":
-        order_id = action.get("order_id")
-        if not order_id or order_id == "null":
-            # (FIX) Set the specific state
-            response = "I can help with your refund. What is the order ID?"
-            return response, "AWAITING_ORDER_ID_FOR_REFUND"
-        response = do_refund(order_id)
-        return response, None
+    # No order/refund actions — unsupported
 
     if action_type == "GET_PRODUCT_INFO":
         product_name = action.get("product_name")
