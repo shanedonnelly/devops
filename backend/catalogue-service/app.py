@@ -1,11 +1,11 @@
 import logging
 import os
-from typing import List
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+from jose import JWTError
 from prisma import Prisma
 from models import CatalogueResponse, CatalogueUpdate, CategoryResponse, ProductResponse, VariantResponse
+from service import TokenService, CatalogueService, AuthorizationService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,14 +21,15 @@ ALGORITHM = "HS256"
 
 security = HTTPBearer()
 
+# Initialize services
+token_service = TokenService(SECRET_KEY, ALGORITHM)
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     try:
         token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id_str: str = payload.get("sub")
-        if user_id_str is None:
+        user_id = token_service.decode_token(token)
+        if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        user_id = int(user_id_str)  # Convertir string en int
         return user_id
     except (JWTError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -71,7 +72,7 @@ async def update_catalogue(site_string_id: str, catalogue: CatalogueUpdate, user
             if not site:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
             
-            if site.userId != user_id:
+            if not AuthorizationService.can_modify_site(site.userId, user_id):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
             
             await db.category.delete_many(where={"siteId": site.id})
