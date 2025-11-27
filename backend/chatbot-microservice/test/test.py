@@ -119,7 +119,7 @@ class ChatbotServiceTests(unittest.TestCase):
         req = FakeRequest(query_params={'site_id': 'qsite'}, headers={})
         self.assertEqual(main._derive_site_id(req, None), 'qsite')
 
-        # Header
+        # Headers
         req = FakeRequest(query_params={}, headers={'x-site-id': 'hsite'})
         self.assertEqual(main._derive_site_id(req, None), 'hsite')
 
