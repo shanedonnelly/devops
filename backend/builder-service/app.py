@@ -1,16 +1,14 @@
 import logging
 import os
-import json
-from datetime import datetime, timedelta
 from typing import List
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
-import bcrypt
+from jose import JWTError
 from prisma import Prisma
 from minio import Minio
 from minio.error import S3Error
 from models import UserRegister, UserLogin, TokenResponse, SiteCreate, SiteResponse, SiteUpdate, SiteConfig
+from service import PasswordService, TokenService, SiteConfigService, SiteService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,35 +37,10 @@ minio_client = Minio(
 
 BUCKET_NAME = "site-configs"
 
-def hash_password(password: str) -> str:
-    # Hash password using bcrypt
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # Verify password using bcrypt
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-
-def ensure_bucket_exists():
-    # Ensure MinIO bucket exists
-    try:
-        if not minio_client.bucket_exists(BUCKET_NAME):
-            minio_client.make_bucket(BUCKET_NAME)
-            logger.info(f"Bucket {BUCKET_NAME} created")
-    except S3Error as e:
-        logger.error(f"Error ensuring bucket exists: {e}")
-
-def create_access_token(data: dict) -> str:
-    # Create JWT token
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    # Convert user_id to string for JWT sub claim
-    if "sub" in to_encode and isinstance(to_encode["sub"], int):
-        to_encode["sub"] = str(to_encode["sub"])
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+# Initialize services
+password_service = PasswordService()
+token_service = TokenService(SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES)
+site_config_service = SiteConfigService(minio_client, BUCKET_NAME)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     # Decode JWT token and return user id
@@ -76,16 +49,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         token = credentials.credentials
         logger.info(f"Token received: {token[:20]}...")
         
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        logger.info(f"Token decoded successfully, payload: {payload}")
-        
-        user_id_str: str = payload.get("sub")
-        if user_id_str is None:
-            logger.error("Token payload missing 'sub' field")
+        user_id = token_service.decode_token(token)
+        if user_id is None:
+            logger.error("Token payload missing 'sub' field or invalid")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         
-        # Convert string back to int
-        user_id = int(user_id_str)
         logger.info(f"User authenticated successfully: {user_id}")
         return user_id
     except JWTError as e:
@@ -105,7 +73,7 @@ async def startup():
     try:
         logger.info("Connecting to database")
         await Prisma().connect()
-        ensure_bucket_exists()
+        site_config_service.ensure_bucket_exists()
         logger.info("Builder service started successfully")
     except Exception as e:
         logger.error(f"Error starting builder service: {e}")
@@ -131,10 +99,10 @@ async def register(user: UserRegister):
             if existing_user:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
             
-            hashed_password = hash_password(user.password)
+            hashed_password = password_service.hash_password(user.password)
             new_user = await db.user.create(data={"username": user.username, "password": hashed_password})
             
-            access_token = create_access_token(data={"sub": new_user.id})
+            access_token = token_service.create_access_token(data={"sub": new_user.id})
             logger.info(f"User registered successfully: {user.username}, user_id: {new_user.id}")
             return TokenResponse(access_token=access_token, token_type="bearer")
     except HTTPException:
@@ -150,10 +118,10 @@ async def login(user: UserLogin):
     try:
         async with Prisma() as db:
             db_user = await db.user.find_unique(where={"username": user.username})
-            if not db_user or not verify_password(user.password, db_user.password):
+            if not db_user or not password_service.verify_password(user.password, db_user.password):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
             
-            access_token = create_access_token(data={"sub": db_user.id})
+            access_token = token_service.create_access_token(data={"sub": db_user.id})
             logger.info(f"User logged in successfully: {user.username}, user_id: {db_user.id}")
             return TokenResponse(access_token=access_token, token_type="bearer")
     except HTTPException:
@@ -199,7 +167,7 @@ async def create_site(site: SiteCreate, user_id: int = Depends(get_current_user)
     logger.info(f"Creating site: {site.site_name} for user: {user_id}")
     try:
         async with Prisma() as db:
-            string_id = site.site_name.lower().replace(" ", "-")
+            string_id = SiteService.generate_string_id(site.site_name)
             
             existing_site = await db.site.find_unique(where={"stringId": string_id})
             if existing_site:
@@ -211,14 +179,7 @@ async def create_site(site: SiteCreate, user_id: int = Depends(get_current_user)
             product = await db.product.create(data={"name": "Default Product", "description": "", "price": 0.0, "categoryId": category.id})
             await db.variant.create(data={"name": "Default Variant", "stock": 0, "productId": product.id})
             
-            default_config = {"css_template": "", "title": "", "description": "", "contact_text": ""}
-            config_json = json.dumps(default_config).encode("utf-8")
-            
-            try:
-                from io import BytesIO
-                minio_client.put_object(BUCKET_NAME, f"{string_id}.json", BytesIO(config_json), len(config_json), content_type="application/json")
-            except S3Error as e:
-                logger.error(f"Error creating config file in MinIO: {e}")
+            site_config_service.create_default_config(string_id)
             
             logger.info(f"Site created successfully: {site.site_name}")
             return new_site
@@ -239,11 +200,7 @@ async def delete_site(id: int, user_id: int = Depends(get_current_user)):
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
             
             # Delete config file from MinIO
-            try:
-                minio_client.remove_object(BUCKET_NAME, f"{site.stringId}.json")
-                logger.info(f"Config file deleted from MinIO: {site.stringId}.json")
-            except S3Error as e:
-                logger.error(f"Error deleting config file from MinIO: {e}")
+            site_config_service.delete_config(site.stringId)
             
             # Delete site from database (CASCADE will delete categories, products, variants)
             await db.site.delete(where={"id": id})
@@ -265,7 +222,7 @@ async def update_site(id: int, site: SiteUpdate, user_id: int = Depends(get_curr
             if not existing_site or existing_site.userId != user_id:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
             
-            new_string_id = site.site_name.lower().replace(" ", "-")
+            new_string_id = SiteService.generate_string_id(site.site_name)
             updated_site = await db.site.update(where={"id": id}, data={"siteName": site.site_name, "stringId": new_string_id})
             
             logger.info(f"Site updated successfully: {id}")
@@ -287,18 +244,13 @@ async def update_site_config(id: int, config: SiteConfig, user_id: int = Depends
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
             
             config_dict = config.model_dump()
-            config_json = json.dumps(config_dict).encode("utf-8")
-            
-            from io import BytesIO
-            minio_client.put_object(BUCKET_NAME, f"{site.stringId}.json", BytesIO(config_json), len(config_json), content_type="application/json")
+            if not site_config_service.save_config(site.stringId, config_dict):
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating config")
             
             logger.info(f"Site config updated successfully: {id}")
             return {"message": "Site config updated successfully"}
     except HTTPException:
         raise
-    except S3Error as e:
-        logger.error(f"Error updating site config in MinIO: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating config")
     except Exception as e:
         logger.error(f"Error updating site config: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
@@ -308,13 +260,13 @@ async def get_site_config(string_id: str):
     # Get site configuration (public route)
     logger.info(f"Getting site config: {string_id}")
     try:
-        response = minio_client.get_object(BUCKET_NAME, f"{string_id}.json")
-        config_data = json.loads(response.read().decode("utf-8"))
+        config_data = site_config_service.get_config(string_id)
+        if config_data is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site config not found")
         logger.info(f"Site config retrieved successfully: {string_id}")
         return SiteConfig(**config_data)
-    except S3Error as e:
-        logger.error(f"Error getting site config from MinIO: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site config not found")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting site config: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
