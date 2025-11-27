@@ -14,5 +14,5 @@ COPY app /app/app
 COPY front /app/app/front
 COPY test /app/test
 
-# Run pytest on container start; fail loudly on test failures
-CMD ["pytest", "-q", "--disable-warnings", "--maxfail=1"]
+# Run the test suite using unittest discovery so `test/test.py` (unittest) is executed
+CMD ["python", "-m", "unittest", "discover", "-v", "-s", "test", "-p", "test*.py"]
