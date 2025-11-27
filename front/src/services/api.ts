@@ -7,6 +7,10 @@ const API_BASE_URL = isDev
   ? 'http://localhost/devops/api' 
   : window.location.origin + '/devops/api';
 
+export const IMAGE_BASE_URL = isDev 
+  ? 'http://localhost/devops/images' 
+  : window.location.origin + '/devops/images';
+
 console.log("API_BASE_URL:", API_BASE_URL);
 
 const builderApi = axios.create({
@@ -84,6 +88,17 @@ export const catalogueApi = {
 
   update: async (siteStringId: string, data: CatalogueUpdate): Promise<void> => {
     await catalogueApiClient.put(`/sites/${siteStringId}/catalogue`, data);
+  },
+
+  uploadProductImage: async (productId: number, file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await catalogueApiClient.post<{ imageUrl: string }>(`/products/${productId}/image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
 };
 

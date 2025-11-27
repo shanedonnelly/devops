@@ -47,6 +47,7 @@ export interface ProductCreate {
   name: string;
   description: string;
   price: number;
+  imageUrl?: string;
   variants: VariantCreate[];
 }
 
@@ -55,6 +56,7 @@ export interface ProductResponse {
   name: string;
   description: string;
   price: number;
+  imageUrl: string | null;
   categoryId: number;
   variants: VariantResponse[];
 }

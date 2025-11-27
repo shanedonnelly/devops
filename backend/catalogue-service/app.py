@@ -1,9 +1,11 @@
 import logging
 import os
-from fastapi import FastAPI, HTTPException, Depends, status
+import uuid
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from prisma import Prisma
+from minio import Minio
 from models import CatalogueResponse, CatalogueUpdate, CategoryResponse, ProductResponse, VariantResponse
 from service import TokenService, CatalogueService, AuthorizationService
 
@@ -19,10 +21,52 @@ app = FastAPI(
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 
+# MinIO Configuration
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
+MINIO_ROOT_USER = os.getenv("MINIO_ROOT_USER", "minioadmin")
+MINIO_ROOT_PASSWORD = os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
+BUCKET_NAME = "product-images"
+
+minio_client = Minio(
+    MINIO_ENDPOINT,
+    access_key=MINIO_ROOT_USER,
+    secret_key=MINIO_ROOT_PASSWORD,
+    secure=False
+)
+
 security = HTTPBearer()
 
 # Initialize services
 token_service = TokenService(SECRET_KEY, ALGORITHM)
+
+import json
+
+# ...existing code...
+
+@app.on_event("startup")
+async def startup():
+    try:
+        if not minio_client.bucket_exists(BUCKET_NAME):
+            minio_client.make_bucket(BUCKET_NAME)
+            logger.info(f"Bucket {BUCKET_NAME} created")
+        
+        # Always ensure bucket policy is public read
+        policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetObject"],
+                    "Resource": [f"arn:aws:s3:::{BUCKET_NAME}/*"]
+                }
+            ]
+        }
+        minio_client.set_bucket_policy(BUCKET_NAME, json.dumps(policy))
+        logger.info(f"Bucket policy set to public read for {BUCKET_NAME}")
+            
+    except Exception as e:
+        logger.error(f"Error ensuring bucket exists or setting policy: {e}")
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     try:
@@ -50,7 +94,7 @@ async def get_catalogue(site_string_id: str):
                 products = []
                 for product in category.products:
                     variants = [VariantResponse(id=v.id, name=v.name, stock=v.stock, productId=v.productId) for v in product.variants]
-                    products.append(ProductResponse(id=product.id, name=product.name, description=product.description, price=product.price, categoryId=product.categoryId, variants=variants))
+                    products.append(ProductResponse(id=product.id, name=product.name, description=product.description, price=product.price, imageUrl=product.imageUrl, categoryId=product.categoryId, variants=variants))
                 categories.append(CategoryResponse(id=category.id, name=category.name, siteId=category.siteId, products=products))
             
             logger.info(f"Catalogue retrieved successfully for site: {site_string_id}")
@@ -81,7 +125,7 @@ async def update_catalogue(site_string_id: str, catalogue: CatalogueUpdate, user
                 category = await db.category.create(data={"name": category_data.name, "siteId": site.id})
                 
                 for product_data in category_data.products:
-                    product = await db.product.create(data={"name": product_data.name, "description": product_data.description, "price": product_data.price, "categoryId": category.id})
+                    product = await db.product.create(data={"name": product_data.name, "description": product_data.description, "price": product_data.price, "imageUrl": product_data.imageUrl, "categoryId": category.id})
                     
                     for variant_data in product_data.variants:
                         await db.variant.create(data={"name": variant_data.name, "stock": variant_data.stock, "productId": product.id})
@@ -92,6 +136,48 @@ async def update_catalogue(site_string_id: str, catalogue: CatalogueUpdate, user
         raise
     except Exception as e:
         logger.error(f"Error updating catalogue: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+@app.post("/products/{product_id}/image", tags=["Catalogue"])
+async def upload_product_image(product_id: int, file: UploadFile = File(...), user_id: int = Depends(get_current_user)):
+    logger.info(f"Uploading image for product: {product_id}")
+    try:
+        async with Prisma() as db:
+            # Verify product ownership
+            product = await db.product.find_unique(where={"id": product_id}, include={"category": {"include": {"site": True}}})
+            if not product:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+            
+            if not AuthorizationService.can_modify_site(product.category.site.userId, user_id):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+            # Upload to MinIO
+            file_ext = os.path.splitext(file.filename)[1]
+            filename = f"{product.category.site.stringId}/{product.id}/{uuid.uuid4()}{file_ext}"
+            
+            minio_client.put_object(
+                BUCKET_NAME,
+                filename,
+                file.file,
+                file.size,
+                content_type=file.content_type
+            )
+            
+            # Update product with image URL
+            # The URL is relative to the MinIO bucket, Nginx will handle the proxying
+            # Format: product-images/site-id/product-id/filename
+            image_url = f"{BUCKET_NAME}/{filename}"
+            
+            await db.product.update(
+                where={"id": product_id},
+                data={"imageUrl": image_url}
+            )
+            
+            logger.info(f"Image uploaded successfully for product: {product_id}")
+            return {"imageUrl": image_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading image: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 # a nice little health check endpoint
 @app.get("/health", tags=["Health"])

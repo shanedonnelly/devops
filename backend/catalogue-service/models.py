@@ -16,6 +16,7 @@ class ProductResponse(BaseModel):
     name: str
     description: str
     price: float
+    imageUrl: str | None = None
     categoryId: int
     variants: List[VariantResponse]
 
@@ -23,6 +24,7 @@ class ProductCreate(BaseModel):
     name: str
     description: str
     price: float
+    imageUrl: str | None = None
     variants: List[VariantCreate]
 
 class CategoryResponse(BaseModel):

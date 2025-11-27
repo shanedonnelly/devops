@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { catalogueApi } from '../services/api';
+import { catalogueApi, IMAGE_BASE_URL } from '../services/api';
 import type { CatalogueResponse, CategoryCreate} from '../types';
 import './CatalogueManager.css';
 
@@ -138,6 +138,7 @@ function CatalogueManager({ siteStringId, editable }: CatalogueManagerProps) {
                   name: '',
                   description: '',
                   price: 0,
+                  imageUrl: null,
                   categoryId: categoryId,
                   variants: []
                 }
@@ -173,6 +174,28 @@ function CatalogueManager({ siteStringId, editable }: CatalogueManagerProps) {
           : c
       )
     });
+  };
+
+  const handleImageUpload = async (categoryId: number, productId: number, file: File) => {
+    try {
+      // If product is new (id is timestamp), we can't upload yet
+      // In a real app we might upload to temp or wait for save
+      // For now, let's just warn
+      if (productId > 1000000000000) { // Simple check for timestamp-based ID
+        setMessage("Veuillez d'abord enregistrer le produit avant d'ajouter une image.");
+        return;
+      }
+
+      setMessage("Upload en cours...");
+      const result = await catalogueApi.uploadProductImage(productId, file);
+      
+      updateProduct(categoryId, productId, 'imageUrl', result.imageUrl);
+      setMessage("Image uploadée avec succès !");
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setMessage("Erreur lors de l'upload de l'image");
+    }
   };
 
   const addVariant = (categoryId: number, productId: number) => {
@@ -366,10 +389,40 @@ function CatalogueManager({ siteStringId, editable }: CatalogueManagerProps) {
                                 min="0"
                                 step="0.01"
                               />
+                              <div className="product-image-upload">
+                                <label className="image-upload-label">
+                                  Image:
+                                  <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handleImageUpload(category.id, product.id, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                                {product.imageUrl && (
+                                  <img 
+                                    src={`${IMAGE_BASE_URL}/${product.imageUrl}`} 
+                                    alt={product.name} 
+                                    className="product-image-preview" 
+                                    style={{ maxWidth: '100px', maxHeight: '100px', marginTop: '5px' }}
+                                  />
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <div className="product-view">
                               <h4 className="product-name">{product.name}</h4>
+                              {product.imageUrl && (
+                                <img 
+                                  src={`${IMAGE_BASE_URL}/${product.imageUrl}`} 
+                                  alt={product.name} 
+                                  className="product-image-view"
+                                  style={{ maxWidth: '150px', maxHeight: '150px', objectFit: 'cover' }} 
+                                />
+                              )}
                               <p className="product-description">{product.description}</p>
                               <p className="product-price">{product.price.toFixed(2)} €</p>
                             </div>
