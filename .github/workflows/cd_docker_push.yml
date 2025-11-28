@@ -165,6 +165,11 @@ jobs:
           npm ci
           npm run build
 
+      - name: Copy frontend build to nginx
+        run: |
+          rm -rf backend/nginx/frontend-build/*
+          cp -r front/dist/* backend/nginx/frontend-build/
+
       - name: Build and Push
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }} backend/nginx
