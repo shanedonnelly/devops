@@ -5,22 +5,31 @@ set -e
 echo "🚀 Démarrage de l'environnement PRODUCTION avec Kustomize"
 echo "=========================================================="
 
-kubectl --kubeconfig ./config apply -k ./overlays/production
+# Détection automatique : si ./config existe, on l'utilise
+if [ -f "./config" ]; then
+    KUBECONFIG_OPT="--kubeconfig ./config"
+else
+    KUBECONFIG_OPT=""
+fi
+
+kubectl $KUBECONFIG_OPT apply -k ./overlays/production
 
 echo ""
 echo "⏳ Attente que les pods soient prêts..."
-kubectl --kubeconfig ./config wait --for=condition=ready pod -l app=postgres -n sitebuilder-production --timeout=180s
-kubectl --kubeconfig ./config wait --for=condition=ready pod -l app=minio -n sitebuilder-production --timeout=180s
+kubectl $KUBECONFIG_OPT wait --for=condition=ready pod -l app=postgres -n sitebuilder-production --timeout=180s
+kubectl $KUBECONFIG_OPT wait --for=condition=ready pod -l app=minio -n sitebuilder-production --timeout=180s
 
 echo ""
 echo "✅ Vérification de la stack PRODUCTION"
 echo ""
-kubectl --kubeconfig ./config get pods -n sitebuilder-production
+kubectl $KUBECONFIG_OPT get pods -n sitebuilder-production
 echo ""
-kubectl --kubeconfig ./config get ingress -n sitebuilder-production
+kubectl $KUBECONFIG_OPT get ingress -n sitebuilder-production
 
 echo ""
 echo "=========================================================="
 echo "✅ PRODUCTION démarré avec succès!"
-echo "   URL: http://shanify.shane-donnelly.fr/devops/shanify"
+echo "   URL: https://shanify.shane-donnelly.fr/devops/shanify"
+echo "   pgAdmin: https://shanify.shane-donnelly.fr/devops/api/pgadmin"
+echo "   MinIO: https://minio-prod.shane-donnelly.fr"
 echo "=========================================================="

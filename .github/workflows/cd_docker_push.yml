@@ -250,3 +250,49 @@ jobs:
           git add -A
           git commit -m "ci: bump versions [skip ci]" || echo "No changes"
           git push
+
+  deploy-staging:
+    needs: [commit-versions]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Pull latest changes
+        run: git pull origin dev
+
+      - name: Deploy to staging
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: apply -k backend/kubernetes/overlays/staging
+
+      - name: Wait for postgres
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: wait --for=condition=ready pod -l app=postgres -n sitebuilder-staging --timeout=180s
+
+      - name: Wait for minio
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: wait --for=condition=ready pod -l app=minio -n sitebuilder-staging --timeout=180s
+
+      - name: Show deployment status
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: get pods -n sitebuilder-staging
+
+      - name: Show ingress
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: get ingress -n sitebuilder-staging

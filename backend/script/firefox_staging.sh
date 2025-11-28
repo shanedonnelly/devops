@@ -1,0 +1,1 @@
+firefox https://shanify-test.shane-donnelly.fr/devops/api/builder-service/docs https://shanify-test.shane-donnelly.fr/devops/api/catalogue-service/docs https://shanify-test.shane-donnelly.fr/devops/api/pgadmin https://shanify-test.shane-donnelly.fr/devops/api/minio https://shanify-test.shane-donnelly.fr/devops/shanify

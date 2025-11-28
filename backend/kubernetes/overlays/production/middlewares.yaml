@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: pgadmin-headers
+spec:
+  headers:
+    customRequestHeaders:
+      X-Script-Name: "/devops/api/pgadmin"
+      X-Forwarded-Proto: "https"
