@@ -38,20 +38,19 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.builder == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump VERSION
+        id: bump
         run: |
           cd backend/builder-service
           CURRENT=$(cat VERSION)
           NEW=$(bash ../script/new_version.sh "$CURRENT")
           echo "$NEW" > VERSION
-          echo "VERSION=$NEW" >> $GITHUB_ENV
+          echo "version=$NEW" >> $GITHUB_OUTPUT
 
       - uses: docker/login-action@v3
         with:
@@ -60,45 +59,31 @@ jobs:
 
       - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ env.VERSION }} backend/builder-service
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ env.VERSION }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ steps.bump.outputs.version }} backend/builder-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ steps.bump.outputs.version }}
 
-      - name: Update staging kustomization
-        run: |
-          sed -i 's|name: shanedonnelly34/builder-service|name: shanedonnelly34/builder-service\n    newTag: "${{ env.VERSION }}"|' backend/kubernetes/overlays/staging/kustomization.yaml || \
-          sed -i 's|newTag: ".*" # builder|newTag: "${{ env.VERSION }}" # builder|' backend/kubernetes/overlays/staging/kustomization.yaml
-
-      - name: Update staging kustomization (proper)
-        run: |
-          cd backend/kubernetes/overlays/staging
-          sed -i '/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: "${{ env.VERSION }}"/}' kustomization.yaml
-
-      - name: Commit changes
-        run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git add backend/builder-service/VERSION backend/kubernetes/overlays/staging/kustomization.yaml
-          git commit -m "ci: bump builder-service to ${{ env.VERSION }}"
-          git push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builder-version
+          path: backend/builder-service/VERSION
 
   build-push-catalogue:
     needs: detect-changes
     if: needs.detect-changes.outputs.catalogue == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump VERSION
+        id: bump
         run: |
           cd backend/catalogue-service
           CURRENT=$(cat VERSION)
           NEW=$(bash ../script/new_version.sh "$CURRENT")
           echo "$NEW" > VERSION
-          echo "VERSION=$NEW" >> $GITHUB_ENV
+          echo "version=$NEW" >> $GITHUB_OUTPUT
 
       - uses: docker/login-action@v3
         with:
@@ -107,40 +92,31 @@ jobs:
 
       - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ env.VERSION }} backend/catalogue-service
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ env.VERSION }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ steps.bump.outputs.version }} backend/catalogue-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ steps.bump.outputs.version }}
 
-      - name: Update staging kustomization
-        run: |
-          cd backend/kubernetes/overlays/staging
-          sed -i '/name: shanedonnelly34\/catalogue-service/{n;s/newTag: .*/newTag: "${{ env.VERSION }}"/}' kustomization.yaml
-
-      - name: Commit changes
-        run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git add backend/catalogue-service/VERSION backend/kubernetes/overlays/staging/kustomization.yaml
-          git commit -m "ci: bump catalogue-service to ${{ env.VERSION }}"
-          git push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-version
+          path: backend/catalogue-service/VERSION
 
   build-push-chatbot:
     needs: detect-changes
     if: needs.detect-changes.outputs.chatbot == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump VERSION
+        id: bump
         run: |
           cd backend/chatbot-microservice
           CURRENT=$(cat VERSION)
           NEW=$(bash ../script/new_version.sh "$CURRENT")
           echo "$NEW" > VERSION
-          echo "VERSION=$NEW" >> $GITHUB_ENV
+          echo "version=$NEW" >> $GITHUB_OUTPUT
 
       - uses: docker/login-action@v3
         with:
@@ -149,40 +125,31 @@ jobs:
 
       - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ env.VERSION }} backend/chatbot-microservice
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ env.VERSION }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ steps.bump.outputs.version }} backend/chatbot-microservice
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ steps.bump.outputs.version }}
 
-      - name: Update staging kustomization
-        run: |
-          cd backend/kubernetes/overlays/staging
-          sed -i '/name: shanedonnelly34\/chatbot-microservice/{n;s/newTag: .*/newTag: "${{ env.VERSION }}"/}' kustomization.yaml
-
-      - name: Commit changes
-        run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git add backend/chatbot-microservice/VERSION backend/kubernetes/overlays/staging/kustomization.yaml
-          git commit -m "ci: bump chatbot-microservice to ${{ env.VERSION }}"
-          git push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chatbot-version
+          path: backend/chatbot-microservice/VERSION
 
   build-push-nginx:
     needs: detect-changes
     if: needs.detect-changes.outputs.nginx == 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump VERSION
+        id: bump
         run: |
           cd backend/nginx
           CURRENT=$(cat VERSION)
           NEW=$(bash ../script/new_version.sh "$CURRENT")
           echo "$NEW" > VERSION
-          echo "VERSION=$NEW" >> $GITHUB_ENV
+          echo "version=$NEW" >> $GITHUB_OUTPUT
 
       - uses: docker/login-action@v3
         with:
@@ -197,18 +164,81 @@ jobs:
 
       - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ env.VERSION }} backend/nginx
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ env.VERSION }}
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }} backend/nginx
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nginx-version
+          path: backend/nginx/VERSION
+
+  commit-versions:
+    needs: [detect-changes, build-push-builder, build-push-catalogue, build-push-chatbot, build-push-nginx]
+    if: always() && (needs.build-push-builder.result == 'success' || needs.build-push-catalogue.result == 'success' || needs.build-push-chatbot.result == 'success' || needs.build-push-nginx.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download builder version
+        if: needs.build-push-builder.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: builder-version
+          path: backend/builder-service/
+
+      - name: Download catalogue version
+        if: needs.build-push-catalogue.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: catalogue-version
+          path: backend/catalogue-service/
+
+      - name: Download chatbot version
+        if: needs.build-push-chatbot.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: chatbot-version
+          path: backend/chatbot-microservice/
+
+      - name: Download nginx version
+        if: needs.build-push-nginx.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: nginx-version
+          path: backend/nginx/
 
       - name: Update staging kustomization
         run: |
           cd backend/kubernetes/overlays/staging
-          sed -i '/name: shanedonnelly34\/nginx/{n;s/newTag: .*/newTag: "${{ env.VERSION }}"/}' kustomization.yaml
+          
+          if [ "${{ needs.build-push-builder.result }}" == "success" ]; then
+            VER=$(cat ../../../builder-service/VERSION)
+            sed -i "/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-catalogue.result }}" == "success" ]; then
+            VER=$(cat ../../../catalogue-service/VERSION)
+            sed -i "/name: shanedonnelly34\/catalogue-service/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-chatbot.result }}" == "success" ]; then
+            VER=$(cat ../../../chatbot-microservice/VERSION)
+            sed -i "/name: shanedonnelly34\/chatbot-microservice/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-nginx.result }}" == "success" ]; then
+            VER=$(cat ../../../nginx/VERSION)
+            sed -i "/name: shanedonnelly34\/nginx/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
 
-      - name: Commit changes
+      - name: Commit all changes
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          git add backend/nginx/VERSION backend/kubernetes/overlays/staging/kustomization.yaml
-          git commit -m "ci: bump nginx to ${{ env.VERSION }}"
+          git add -A
+          git commit -m "ci: bump versions [skip ci]" || echo "No changes"
           git push
