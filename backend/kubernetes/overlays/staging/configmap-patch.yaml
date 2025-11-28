@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: app-config
 data:
-  MINIO_BROWSER_REDIRECT_URL: "https://shanify-test.shane-donnelly.fr/devops/api/minio/"
-  MINIO_SERVER_URL: "https://shanify-test.shane-donnelly.fr"
+  MINIO_BROWSER_REDIRECT_URL: "https://minio-staging.shane-donnelly.fr"
+  MINIO_SERVER_URL: "https://minio-staging.shane-donnelly.fr"
+  MINIO_DOMAIN: "minio-staging.shane-donnelly.fr"
   CATALOGUE_BASE: "https://shanify-test.shane-donnelly.fr/devops/api/catalogue-service"
-  MINIO_DOMAIN: "shanify-test.shane-donnelly.fr"

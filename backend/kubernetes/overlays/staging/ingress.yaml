@@ -85,13 +85,13 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - shanify-test.shane-donnelly.fr
-    secretName: shanify-staging-tls
+    - minio-staging.shane-donnelly.fr
+    secretName: minio-staging-tls
   rules:
-  - host: shanify-test.shane-donnelly.fr
+  - host: minio-staging.shane-donnelly.fr
     http:
       paths:
-      - path: /devops/api/minio
+      - path: /
         pathType: Prefix
         backend:
           service:
