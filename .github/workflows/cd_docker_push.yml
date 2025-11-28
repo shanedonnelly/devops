@@ -263,6 +263,22 @@ jobs:
       - name: Pull latest changes
         run: git pull origin dev
 
+      - name: Create secrets.yaml
+        run: |
+          cat > backend/kubernetes/base/secrets.yaml << EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: app-secrets
+          type: Opaque
+          stringData:
+            POSTGRES_PASSWORD: "${{ secrets.POSTGRES_PASSWORD }}"
+            PGADMIN_DEFAULT_PASSWORD: "${{ secrets.PGADMIN_DEFAULT_PASSWORD }}"
+            MINIO_ROOT_PASSWORD: "${{ secrets.MINIO_ROOT_PASSWORD }}"
+            SECRET_KEY: "${{ secrets.SECRET_KEY }}"
+            OPENROUTER_KEY: "${{ secrets.OPENROUTER_KEY }}"
+          EOF
+
       - name: Deploy to staging
         uses: actions-hub/kubectl@master
         env:
