@@ -4,6 +4,7 @@ nginx/frontend-build/*
 .env
 kubernetes/base/secrets.yaml
 kubernetes/config
+kubernetes/*.log
 
 __pycache__/
 *.py[cod]

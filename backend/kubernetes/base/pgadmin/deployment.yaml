@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pgadmin
-  namespace: sitebuilder
 spec:
   replicas: 1
   selector:
@@ -29,6 +28,8 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: PGADMIN_DEFAULT_PASSWORD
+        - name: SCRIPT_NAME
+          value: "/devops/api/pgadmin"
         volumeMounts:
         - name: pgadmin-storage
           mountPath: /var/lib/pgadmin
