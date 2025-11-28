@@ -117,9 +117,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          for test in test/e2e/*.sh; do
-            bash "$test"
-          done
+          docker compose up --build -d
+          bash test/e2e/run_all.sh
         working-directory: backend
 
   ci-status:
