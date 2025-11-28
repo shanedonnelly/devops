@@ -4,7 +4,10 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'backend/**'
+      - 'backend/builder-service/**'
+      - 'backend/catalogue-service/**'
+      - 'backend/chatbot-microservice/**'
+      - 'backend/nginx/**'
       - 'front/**'
 
 jobs:
@@ -15,17 +18,14 @@ jobs:
       catalogue: ${{ steps.filter.outputs.catalogue }}
       chatbot: ${{ steps.filter.outputs.chatbot }}
       nginx: ${{ steps.filter.outputs.nginx }}
-      any_service: ${{ steps.filter.outputs.any_service }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           base: ${{ github.event.before }}
-          ref: ${{ github.event.after }}
           filters: |
             builder:
               - 'backend/builder-service/**'
@@ -36,87 +36,217 @@ jobs:
             nginx:
               - 'backend/nginx/**'
               - 'front/**'
-            any_service:
-              - 'backend/builder-service/**'
-              - 'backend/catalogue-service/**'
-              - 'backend/chatbot-microservice/**'
-              - 'backend/nginx/**'
-              - 'front/**'
 
   build-push-builder:
     needs: detect-changes
     if: needs.detect-changes.outputs.builder == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/builder-service
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push Builder Service
+
+      - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest backend/builder-service
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ steps.bump.outputs.version }} backend/builder-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builder-version
+          path: backend/builder-service/VERSION
 
   build-push-catalogue:
     needs: detect-changes
     if: needs.detect-changes.outputs.catalogue == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/catalogue-service
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push Catalogue Service
+
+      - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest backend/catalogue-service
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ steps.bump.outputs.version }} backend/catalogue-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-version
+          path: backend/catalogue-service/VERSION
 
   build-push-chatbot:
     needs: detect-changes
     if: needs.detect-changes.outputs.chatbot == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/chatbot-microservice
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push Chatbot Microservice
+
+      - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest backend/chatbot-microservice
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ steps.bump.outputs.version }} backend/chatbot-microservice
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chatbot-version
+          path: backend/chatbot-microservice/VERSION
 
   build-push-nginx:
     needs: detect-changes
     if: needs.detect-changes.outputs.nginx == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/nginx
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Build Frontend and Nginx Image
+
+      - name: Build frontend
         run: |
           cd front
-          npm i
+          npm ci
           npm run build
-          cd ../backend
-          cp -r ../front/dist/* ./nginx/frontend-build/
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:latest nginx
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:latest
+
+      - name: Copy frontend build to nginx
+        run: |
+          rm -rf backend/nginx/frontend-build/*
+          cp -r front/dist/* backend/nginx/frontend-build/
+
+      - name: Build and Push
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }} backend/nginx
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nginx-version
+          path: backend/nginx/VERSION
+
+  commit-versions:
+    needs: [detect-changes, build-push-builder, build-push-catalogue, build-push-chatbot, build-push-nginx]
+    if: always() && (needs.build-push-builder.result == 'success' || needs.build-push-catalogue.result == 'success' || needs.build-push-chatbot.result == 'success' || needs.build-push-nginx.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download builder version
+        if: needs.build-push-builder.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: builder-version
+          path: backend/builder-service/
+
+      - name: Download catalogue version
+        if: needs.build-push-catalogue.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: catalogue-version
+          path: backend/catalogue-service/
+
+      - name: Download chatbot version
+        if: needs.build-push-chatbot.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: chatbot-version
+          path: backend/chatbot-microservice/
+
+      - name: Download nginx version
+        if: needs.build-push-nginx.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: nginx-version
+          path: backend/nginx/
+
+      - name: Update staging kustomization
+        run: |
+          cd backend/kubernetes/overlays/staging
+          
+          if [ "${{ needs.build-push-builder.result }}" == "success" ]; then
+            VER=$(cat ../../../builder-service/VERSION)
+            sed -i "/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-catalogue.result }}" == "success" ]; then
+            VER=$(cat ../../../catalogue-service/VERSION)
+            sed -i "/name: shanedonnelly34\/catalogue-service/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-chatbot.result }}" == "success" ]; then
+            VER=$(cat ../../../chatbot-microservice/VERSION)
+            sed -i "/name: shanedonnelly34\/chatbot-microservice/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-nginx.result }}" == "success" ]; then
+            VER=$(cat ../../../nginx/VERSION)
+            sed -i "/name: shanedonnelly34\/nginx/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+
+      - name: Commit all changes
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          git commit -m "ci: bump versions [skip ci]" || echo "No changes"
+          git push

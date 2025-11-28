@@ -1,0 +1,57 @@
+name: CD Production - Sync tags from staging
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-tags-to-production:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy tags from staging to production
+        run: |
+          STAGING_FILE="backend/kubernetes/overlays/staging/kustomization.yaml"
+          PROD_FILE="backend/kubernetes/overlays/production/kustomization.yaml"
+          
+          # Extract tags from staging using grep with Perl regex
+          BUILDER_TAG=$(grep -oP 'name: shanedonnelly34/builder-service\s*\n\s*newTag: "\K[^"]+' "$STAGING_FILE" || echo "")
+          CATALOGUE_TAG=$(grep -oP 'name: shanedonnelly34/catalogue-service\s*\n\s*newTag: "\K[^"]+' "$STAGING_FILE" || echo "")
+          CHATBOT_TAG=$(grep -oP 'name: shanedonnelly34/chatbot-microservice\s*\n\s*newTag: "\K[^"]+' "$STAGING_FILE" || echo "")
+          NGINX_TAG=$(grep -oP 'name: shanedonnelly34/nginx\s*\n\s*newTag: "\K[^"]+' "$STAGING_FILE" || echo "")
+          
+          echo "Tags found: builder=$BUILDER_TAG, catalogue=$CATALOGUE_TAG, chatbot=$CHATBOT_TAG, nginx=$NGINX_TAG"
+          
+          # Update production kustomization only if tags are found
+          if [ -n "$BUILDER_TAG" ]; then
+            sed -i "/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: \"$BUILDER_TAG\"/}" "$PROD_FILE"
+          fi
+          
+          if [ -n "$CATALOGUE_TAG" ]; then
+            sed -i "/name: shanedonnelly34\/catalogue-service/{n;s/newTag: .*/newTag: \"$CATALOGUE_TAG\"/}" "$PROD_FILE"
+          fi
+          
+          if [ -n "$CHATBOT_TAG" ]; then
+            sed -i "/name: shanedonnelly34\/chatbot-microservice/{n;s/newTag: .*/newTag: \"$CHATBOT_TAG\"/}" "$PROD_FILE"
+          fi
+          
+          if [ -n "$NGINX_TAG" ]; then
+            sed -i "/name: shanedonnelly34\/nginx/{n;s/newTag: .*/newTag: \"$NGINX_TAG\"/}" "$PROD_FILE"
+          fi
+          
+          echo "Production kustomization updated:"
+          cat "$PROD_FILE"
+
+      - name: Commit production update
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add backend/kubernetes/overlays/production/kustomization.yaml
+          git diff --cached --quiet || git commit -m "ci(prod): sync image tags from staging [skip ci]"
+          git push

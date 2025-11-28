@@ -14,8 +14,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: shanedonnelly34/nginx:latest
-        imagePullPolicy: Always  # AJOUTER CETTE LIGNE
+        image: shanedonnelly34/nginx
         ports:
         - containerPort: 80
         livenessProbe:

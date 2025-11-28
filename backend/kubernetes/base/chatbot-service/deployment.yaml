@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: chatbot-service
-        image: shanedonnelly34/chatbot-microservice:latest
+        image: shanedonnelly34/chatbot-microservice
         ports:
         - containerPort: 8000
         env:
