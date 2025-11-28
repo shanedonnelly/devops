@@ -6,6 +6,7 @@ namespace: sitebuilder-staging
 resources:
   - ../../base
   - ingress.yaml
+  - middlewares.yaml
 
 patches:
   - path: configmap-patch.yaml
