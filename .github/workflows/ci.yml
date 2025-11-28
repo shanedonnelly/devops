@@ -4,6 +4,17 @@ on:
   pull_request:
     branches: [dev]
 
+env:
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  PGADMIN_DEFAULT_EMAIL: ${{ secrets.PGADMIN_DEFAULT_EMAIL }}
+  PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
+  MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+  MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+  SECRET_KEY: ${{ secrets.SECRET_KEY }}
+  OPENROUTER_KEY: ${{ secrets.OPENROUTER_KEY }}
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -77,6 +88,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env file
+        run: |
+          cat > backend/.env << EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL }}
+          PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
+          MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          OPENROUTER_KEY=${{ secrets.OPENROUTER_KEY }}
+          EOF
       - run: bash test/service/builder-service-test.sh
         working-directory: backend
 
@@ -86,12 +110,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env file
+        run: |
+          cat > backend/.env << EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL }}
+          PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
+          MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          OPENROUTER_KEY=${{ secrets.OPENROUTER_KEY }}
+          EOF
       - run: bash test/service/catalogue-service-test.sh
         working-directory: backend
 
   test-chatbot:
     needs: [detect-changes, build-chatbot, build-catalogue]
-    # chatbot depends on catalogue, so run its tests if either changed and builds succeeded
     if: |
       (needs.detect-changes.outputs.chatbot == 'true' || needs.detect-changes.outputs.catalogue == 'true') &&
       (needs.build-chatbot.result == 'success' || needs.build-chatbot.result == 'skipped') &&
@@ -99,6 +135,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Create .env file
+        run: |
+          cat > backend/.env << EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL }}
+          PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
+          MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          OPENROUTER_KEY=${{ secrets.OPENROUTER_KEY }}
+          EOF
       - run: bash test/service/chatbot-microservice-test.sh
         working-directory: backend
 
@@ -116,9 +165,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - name: Create .env file
+        run: |
+          cat > backend/.env << EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          PGADMIN_DEFAULT_EMAIL=${{ secrets.PGADMIN_DEFAULT_EMAIL }}
+          PGADMIN_DEFAULT_PASSWORD=${{ secrets.PGADMIN_DEFAULT_PASSWORD }}
+          MINIO_ROOT_USER=${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD=${{ secrets.MINIO_ROOT_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          OPENROUTER_KEY=${{ secrets.OPENROUTER_KEY }}
+          EOF
+      - name: Run E2E tests
+        run: |
           docker compose up --build -d
           bash test/e2e/run_all.sh
+        working-directory: backend
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
         working-directory: backend
 
   ci-status:
