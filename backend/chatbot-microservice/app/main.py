@@ -300,49 +300,67 @@ def get_vibe_recommendation(user_query: str, site_id: str) -> str:
 def get_json_response(system_prompt: str, user_query: str) -> dict | None:
     """Helper function to get a JSON response from the configured model endpoint.
 
-    Uses the OpenAI/OpenRouter client configured via environment variables.
+    Runs the model call inside a worker thread with a short timeout to avoid
+    blocking the FastAPI worker and causing upstream nginx 504s when the
+    model or network is slow or unresponsive.
     """
-    try:
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+    # inner callable that performs the model request (optionally with response_format)
+    def _call_model(use_response_format: bool):
         # small pause to avoid bursting requests to the upstream model
-        time.sleep(2)
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            extra_body={
-                "models":["nvidia/nemotron-nano-9b-v2:free","nousresearch/hermes-3-llama-3.1-405b:free"],
-            },
-            messages=[
+        time.sleep(1)
+        kwargs = {
+            "model": MODEL_NAME,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_query}
             ],
-            response_format={"type": "json_object"}, 
-            temperature=0.0
-        )
-        content = response.choices[0].message.content
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        return json.loads(content)
-        
-    except Exception as e:
-        print(f"Error calling model ({MODEL_NAME}): {e}")
-        try:
-            print("Retrying query without 'response_format'...")
-            # pause before retry to avoid immediate repeated requests
-            time.sleep(2)
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_query}
-                ],
-                temperature=0.0
-            )
-            content = response.choices[0].message.content
-            if content.startswith("```json"):
-                content = content[7:-3].strip()
-            return json.loads(content)
-        except Exception as retry_e:
-            print(f"Error on retry: {retry_e}")
-            return None
+            "temperature": 0.0,
+        }
+        if use_response_format:
+            # prefer structured JSON response when available
+            kwargs["response_format"] = {"type": "json_object"}
+            kwargs["extra_body"] = {
+                "models": ["nvidia/nemotron-nano-9b-v2:free", "nousresearch/hermes-3-llama-3.1-405b:free"],
+            }
+
+        resp = client.chat.completions.create(**kwargs)
+        return resp
+
+    # Limit how long we'll wait for any single model attempt (seconds)
+    MODEL_TIMEOUT = int(os.getenv("CHATBOT_MODEL_TIMEOUT", "8"))
+
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        # Try with structured response first, then fallback without structured format
+        for use_fmt in (True, False):
+            future = ex.submit(_call_model, use_fmt)
+            try:
+                response = future.result(timeout=MODEL_TIMEOUT)
+            except FuturesTimeout:
+                print(f"Model call timed out after {MODEL_TIMEOUT}s (use_response_format={use_fmt})")
+                # cancel and try next fallback
+                try:
+                    future.cancel()
+                except Exception:
+                    pass
+                continue
+            except Exception as e:
+                print(f"Error calling model (attempt use_response_format={use_fmt}): {e}")
+                continue
+
+            try:
+                content = response.choices[0].message.content
+                if isinstance(content, str) and content.startswith("```json"):
+                    content = content[7:-3].strip()
+                return json.loads(content)
+            except Exception as parse_e:
+                print(f"Error parsing model response: {parse_e}")
+                # try next fallback
+                continue
+
+    # If all attempts fail, return None so caller can respond quickly
+    return None
 
 def classify_intent(user_query: str) -> dict:
     """Classifies user intent using a few-shot prompt (catalog search, help, greeting, other)."""
