@@ -6,7 +6,6 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    ingress.kubernetes.io/custom-response-headers: "Access-Control-Allow-Origin:*||Access-Control-Allow-Methods:GET,POST,PUT,DELETE,OPTIONS||Access-Control-Allow-Headers:*"
 spec:
   ingressClassName: traefik
   tls:
@@ -17,7 +16,6 @@ spec:
   - host: shanify-test.shane-donnelly.fr
     http:
       paths:
-      # Frontend - doit être servi tel quel
       - path: /devops/shanify
         pathType: Prefix
         backend:
@@ -25,7 +23,6 @@ spec:
             name: nginx-service
             port:
               number: 80
-      # Builder Service API
       - path: /devops/api/builder-service
         pathType: Prefix
         backend:
@@ -33,7 +30,6 @@ spec:
             name: builder-service
             port:
               number: 8000
-      # Catalogue Service API
       - path: /devops/api/catalogue-service
         pathType: Prefix
         backend:
@@ -41,7 +37,6 @@ spec:
             name: catalogue-service
             port:
               number: 8000
-      # Chatbot API
       - path: /devops/api/chatbot
         pathType: Prefix
         backend:
@@ -50,7 +45,6 @@ spec:
             port:
               number: 8000
 ---
-# Ingress séparé pour PgAdmin avec middleware
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -59,7 +53,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-pgadmin-stripprefix@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-pgadmin-headers@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
@@ -78,7 +72,6 @@ spec:
             port:
               number: 80
 ---
-# Ingress séparé pour MinIO avec middleware
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -87,7 +80,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-minio-stripprefix@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-minio-strip@kubernetescrd,sitebuilder-staging-minio-headers@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
