@@ -15,10 +15,10 @@ patches:
 
 images:
   - name: shanedonnelly34/builder-service
-    newTag: "1.0"
+    newTag: "1.1"
   - name: shanedonnelly34/catalogue-service
-    newTag: "1.0"
+    newTag: "1.1"
   - name: shanedonnelly34/chatbot-microservice
-    newTag: "1.0"
+    newTag: "1.1"
   - name: shanedonnelly34/nginx
-    newTag: "1.0"
+    newTag: "1.1"
