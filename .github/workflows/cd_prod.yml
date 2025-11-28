@@ -1,0 +1,39 @@
+name: CD Production - Sync tags from staging
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-tags-to-production:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy tags from staging to production
+        run: |
+          # Extract tags from staging
+          BUILDER_TAG=$(grep -A1 'name: shanedonnelly34/builder-service' backend/kubernetes/overlays/staging/kustomization.yaml | grep newTag | sed 's/.*newTag: "\(.*\)"/\1/')
+          CATALOGUE_TAG=$(grep -A1 'name: shanedonnelly34/catalogue-service' backend/kubernetes/overlays/staging/kustomization.yaml | grep newTag | sed 's/.*newTag: "\(.*\)"/\1/')
+          CHATBOT_TAG=$(grep -A1 'name: shanedonnelly34/chatbot-microservice' backend/kubernetes/overlays/staging/kustomization.yaml | grep newTag | sed 's/.*newTag: "\(.*\)"/\1/')
+          NGINX_TAG=$(grep -A1 'name: shanedonnelly34/nginx' backend/kubernetes/overlays/staging/kustomization.yaml | grep newTag | sed 's/.*newTag: "\(.*\)"/\1/')
+          
+          # Update production kustomization
+          cd backend/kubernetes/overlays/production
+          sed -i "/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: \"$BUILDER_TAG\"/}" kustomization.yaml
+          sed -i "/name: shanedonnelly34\/catalogue-service/{n;s/newTag: .*/newTag: \"$CATALOGUE_TAG\"/}" kustomization.yaml
+          sed -i "/name: shanedonnelly34\/chatbot-microservice/{n;s/newTag: .*/newTag: \"$CHATBOT_TAG\"/}" kustomization.yaml
+          sed -i "/name: shanedonnelly34\/nginx/{n;s/newTag: .*/newTag: \"$NGINX_TAG\"/}" kustomization.yaml
+
+      - name: Commit production update
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add backend/kubernetes/overlays/production/kustomization.yaml
+          git commit -m "ci(prod): sync image tags from staging" || echo "No changes"
+          git push
