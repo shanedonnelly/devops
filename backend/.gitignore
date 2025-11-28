@@ -4,6 +4,7 @@ nginx/frontend-build/*
 .env
 kubernetes/base/secrets.yaml
 kubernetes/config
+test/e2e/e2e_state.json
 kubernetes/*.log
 
 __pycache__/
