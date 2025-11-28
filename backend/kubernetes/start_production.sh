@@ -22,5 +22,7 @@ kubectl --kubeconfig ./config get ingress -n sitebuilder-production
 echo ""
 echo "=========================================================="
 echo "✅ PRODUCTION démarré avec succès!"
-echo "   URL: http://shanify.shane-donnelly.fr/devops/shanify"
+echo "   URL: https://shanify.shane-donnelly.fr/devops/shanify"
+echo "   pgAdmin: https://shanify.shane-donnelly.fr/devops/api/pgadmin"
+echo "   MinIO: https://minio-prod.shane-donnelly.fr"
 echo "=========================================================="
