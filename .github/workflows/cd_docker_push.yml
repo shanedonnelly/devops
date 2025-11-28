@@ -253,6 +253,7 @@ jobs:
 
   deploy-staging:
     needs: [commit-versions]
+    if: always() && needs.commit-versions.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
