@@ -3,7 +3,12 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [dev]
-
+    paths:
+      - 'backend/builder-service/**'
+      - 'backend/catalogue-service/**'
+      - 'backend/chatbot-microservice/**'
+      - 'backend/nginx/**'
+      - 'backend/test/**'
 env:
   POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}

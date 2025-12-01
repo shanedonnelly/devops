@@ -25,7 +25,19 @@ echo ""
 kubectl $KUBECONFIG_OPT get pods -n sitebuilder-production
 echo ""
 kubectl $KUBECONFIG_OPT get ingress -n sitebuilder-production
+echo ""
+cat <<'TUTO'
+# Voir les pods et leur statut
+kubectl $KUBECONFIG_OPT get pods -n sitebuilder-production
 
+# Voir les services et ingresses
+kubectl $KUBECONFIG_OPT get svc -n sitebuilder-production
+kubectl $KUBECONFIG_OPT get ingress -n sitebuilder-production
+
+# Logs (remplacer <pod-name> par le nom réel)
+kubectl $KUBECONFIG_OPT logs -n sitebuilder-production <pod-name> --tail=200
+kubectl $KUBECONFIG_OPT logs -n sitebuilder-production <pod-name> -f    # suivre en direct
+TUTO
 echo ""
 echo "=========================================================="
 echo "✅ PRODUCTION démarré avec succès!"
