@@ -36,7 +36,6 @@ jobs:
           
           echo "Tags found: builder=$BUILDER_TAG, catalogue=$CATALOGUE_TAG, chatbot=$CHATBOT_TAG, nginx=$NGINX_TAG"
           
-          # Update production kustomization only if tags are found
           if [ -n "$BUILDER_TAG" ]; then
             sed -i "/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: \"$BUILDER_TAG\"/}" "$PROD_FILE"
           fi
@@ -70,17 +69,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main  # S'assurer d'avoir les derniers changements
+          ref: main
 
       - name: Pull latest changes
         run: git pull origin main
 
-      - name: Setup kubectl
-        uses: actions-hub/kubectl@master
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-        with:
-          args: version --client
+      - name: Create secrets.yaml
+        run: |
+          cat > backend/kubernetes/base/secrets.yaml << EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: app-secrets
+          type: Opaque
+          stringData:
+            POSTGRES_PASSWORD: "${{ secrets.POSTGRES_PASSWORD }}"
+            PGADMIN_DEFAULT_PASSWORD: "${{ secrets.PGADMIN_DEFAULT_PASSWORD }}"
+            MINIO_ROOT_PASSWORD: "${{ secrets.MINIO_ROOT_PASSWORD }}"
+            SECRET_KEY: "${{ secrets.SECRET_KEY }}"
+            OPENROUTER_KEY: "${{ secrets.OPENROUTER_KEY }}"
+          EOF
 
       - name: Deploy to production
         uses: actions-hub/kubectl@master
