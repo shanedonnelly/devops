@@ -100,7 +100,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-chatbot-cors@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-chatbot-strip@kubernetescrd,sitebuilder-staging-chatbot-cors@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
@@ -118,3 +118,30 @@ spec:
             name: chatbot-api
             port:
               number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: root-redirect-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-root-redirect@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - shanify-test.shane-donnelly.fr
+    secretName: shanify-staging-tls
+  rules:
+  - host: shanify-test.shane-donnelly.fr
+    http:
+      paths:
+      - path: /
+        pathType: Exact
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
