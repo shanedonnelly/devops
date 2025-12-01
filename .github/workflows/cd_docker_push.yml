@@ -9,6 +9,7 @@ on:
       - 'backend/chatbot-microservice/**'
       - 'backend/nginx/**'
       - 'front/**'
+      - 'backend/kubernetes/**'
 
 jobs:
   detect-changes:
@@ -18,6 +19,7 @@ jobs:
       catalogue: ${{ steps.filter.outputs.catalogue }}
       chatbot: ${{ steps.filter.outputs.chatbot }}
       nginx: ${{ steps.filter.outputs.nginx }}
+      kubernetes-only: ${{ steps.check-k8s.outputs.kubernetes-only }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,10 +38,24 @@ jobs:
             nginx:
               - 'backend/nginx/**'
               - 'front/**'
+            kubernetes:
+              - 'backend/kubernetes/**'
+      - name: Check if only kubernetes changed
+        id: check-k8s
+        run: |
+          if [ "${{ steps.filter.outputs.kubernetes }}" == "true" ] && \
+             [ "${{ steps.filter.outputs.builder }}" == "false" ] && \
+             [ "${{ steps.filter.outputs.catalogue }}" == "false" ] && \
+             [ "${{ steps.filter.outputs.chatbot }}" == "false" ] && \
+             [ "${{ steps.filter.outputs.nginx }}" == "false" ]; then
+            echo "kubernetes-only=true" >> $GITHUB_OUTPUT
+          else
+            echo "kubernetes-only=false" >> $GITHUB_OUTPUT
+          fi
 
   build-push-builder:
     needs: detect-changes
-    if: needs.detect-changes.outputs.builder == 'true'
+    if: needs.detect-changes.outputs.builder == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -72,7 +88,7 @@ jobs:
 
   build-push-catalogue:
     needs: detect-changes
-    if: needs.detect-changes.outputs.catalogue == 'true'
+    if: needs.detect-changes.outputs.catalogue == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -105,7 +121,7 @@ jobs:
 
   build-push-chatbot:
     needs: detect-changes
-    if: needs.detect-changes.outputs.chatbot == 'true'
+    if: needs.detect-changes.outputs.chatbot == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -138,7 +154,7 @@ jobs:
 
   build-push-nginx:
     needs: detect-changes
-    if: needs.detect-changes.outputs.nginx == 'true'
+    if: needs.detect-changes.outputs.nginx == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -182,7 +198,7 @@ jobs:
 
   commit-versions:
     needs: [detect-changes, build-push-builder, build-push-catalogue, build-push-chatbot, build-push-nginx]
-    if: always() && (needs.build-push-builder.result == 'success' || needs.build-push-catalogue.result == 'success' || needs.build-push-chatbot.result == 'success' || needs.build-push-nginx.result == 'success')
+    if: always() && needs.detect-changes.outputs.kubernetes-only == 'false' && (needs.build-push-builder.result == 'success' || needs.build-push-catalogue.result == 'success' || needs.build-push-chatbot.result == 'success' || needs.build-push-nginx.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -252,8 +268,8 @@ jobs:
           git push
 
   deploy-staging:
-    needs: [commit-versions]
-    if: always() && needs.commit-versions.result == 'success'
+    needs: [detect-changes, commit-versions]
+    if: always() && (needs.commit-versions.result == 'success' || needs.detect-changes.outputs.kubernetes-only == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -25,7 +25,19 @@ echo ""
 kubectl $KUBECONFIG_OPT get pods -n sitebuilder-staging
 echo ""
 kubectl $KUBECONFIG_OPT get ingress -n sitebuilder-staging
+echo ""
+cat <<'TUTO'
+# Voir les pods et leur statut
+kubectl $KUBECONFIG_OPT get pods -n sitebuilder-staging
 
+# Voir les services et ingresses
+kubectl $KUBECONFIG_OPT get svc -n sitebuilder-staging
+kubectl $KUBECONFIG_OPT get ingress -n sitebuilder-staging
+
+# Logs (remplacer <pod-name> par le nom réel)
+kubectl $KUBECONFIG_OPT logs -n sitebuilder-staging <pod-name> --tail=200
+kubectl $KUBECONFIG_OPT logs -n sitebuilder-staging <pod-name> -f    # suivre en direct
+TUTO
 echo ""
 echo "======================================================="
 echo "✅ STAGING démarré avec succès!"
