@@ -7,3 +7,22 @@ spec:
     customRequestHeaders:
       X-Script-Name: "/devops/api/pgadmin"
       X-Forwarded-Proto: "https"
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: chatbot-cors
+spec:
+  headers:
+    accessControlAllowMethods:
+      - "GET"
+      - "POST"
+      - "OPTIONS"
+    accessControlAllowHeaders:
+      - "Authorization"
+      - "Content-Type"
+    accessControlAllowOriginList:
+      - "https://shanify.shane-donnelly.fr"
+    accessControlMaxAge: 100
+    addVaryHeader: true

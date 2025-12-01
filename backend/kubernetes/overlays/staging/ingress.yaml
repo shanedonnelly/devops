@@ -37,13 +37,6 @@ spec:
             name: catalogue-service
             port:
               number: 8000
-      - path: /devops/api/chatbot
-        pathType: Prefix
-        backend:
-          service:
-            name: chatbot-service
-            port:
-              number: 8000
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -98,3 +91,30 @@ spec:
             name: minio-service
             port:
               number: 9001
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chatbot-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-chatbot-cors@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - shanify-test.shane-donnelly.fr
+    secretName: shanify-staging-tls
+  rules:
+  - host: shanify-test.shane-donnelly.fr
+    http:
+      paths:
+      - path: /devops/api/chatbot
+        pathType: Prefix
+        backend:
+          service:
+            name: chatbot-api
+            port:
+              number: 8000
