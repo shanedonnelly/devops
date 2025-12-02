@@ -2,11 +2,17 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# voir les prints en temps réel (à garder)
-ENV PYTHONUNBUFFERED=1
+# See prints in real-time
+ENV PYTHONUNBUFFERED=1 PYTHONPATH=/app
 
-# copie le test (ou autre fichier de test si besoin)
-COPY test/test.py .
+# Install runtime + test deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt pytest
 
-# au run, exécute le test et retourne son code de sortie, s'assurer que si les tests échouent le conteneur aussi
-ENTRYPOINT ["python", "test.py"]
+# Copy application code and tests
+COPY app /app/app
+COPY front /app/app/front
+COPY test /app/test
+
+# Run the test suite using unittest discovery so `test/test.py` (unittest) is executed
+CMD ["python", "-m", "unittest", "discover", "-v", "-s", "test", "-p", "test*.py"]

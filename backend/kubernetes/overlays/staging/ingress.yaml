@@ -6,7 +6,6 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    ingress.kubernetes.io/custom-response-headers: "Access-Control-Allow-Origin:*||Access-Control-Allow-Methods:GET,POST,PUT,DELETE,OPTIONS||Access-Control-Allow-Headers:*"
 spec:
   ingressClassName: traefik
   tls:
@@ -38,13 +37,26 @@ spec:
             name: catalogue-service
             port:
               number: 8000
-      - path: /devops/api/chatbot
-        pathType: Prefix
-        backend:
-          service:
-            name: chatbot-service
-            port:
-              number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pgadmin-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-pgadmin-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - shanify-test.shane-donnelly.fr
+    secretName: shanify-staging-tls
+  rules:
+  - host: shanify-test.shane-donnelly.fr
+    http:
+      paths:
       - path: /devops/api/pgadmin
         pathType: Prefix
         backend:
@@ -52,10 +64,84 @@ spec:
             name: pgadmin-service
             port:
               number: 80
-      - path: /devops/api/minio
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-minio-strip@kubernetescrd,sitebuilder-staging-minio-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - minio-staging.shane-donnelly.fr
+    secretName: minio-staging-tls
+  rules:
+  - host: minio-staging.shane-donnelly.fr
+    http:
+      paths:
+      - path: /
         pathType: Prefix
         backend:
           service:
             name: minio-service
             port:
               number: 9001
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chatbot-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-chatbot-strip@kubernetescrd,sitebuilder-staging-chatbot-cors@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - shanify-test.shane-donnelly.fr
+    secretName: shanify-staging-tls
+  rules:
+  - host: shanify-test.shane-donnelly.fr
+    http:
+      paths:
+      - path: /devops/api/chatbot
+        pathType: Prefix
+        backend:
+          service:
+            name: chatbot-api
+            port:
+              number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: root-redirect-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: sitebuilder-staging-root-redirect@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - shanify-test.shane-donnelly.fr
+    secretName: shanify-staging-tls
+  rules:
+  - host: shanify-test.shane-donnelly.fr
+    http:
+      paths:
+      - path: /
+        pathType: Exact
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
