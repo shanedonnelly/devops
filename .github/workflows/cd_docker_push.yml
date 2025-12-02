@@ -4,8 +4,12 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'backend/**'
+      - 'backend/builder-service/**'
+      - 'backend/catalogue-service/**'
+      - 'backend/chatbot-microservice/**'
+      - 'backend/nginx/**'
       - 'front/**'
+      - 'backend/kubernetes/**'
 
 jobs:
   detect-changes:
@@ -15,17 +19,15 @@ jobs:
       catalogue: ${{ steps.filter.outputs.catalogue }}
       chatbot: ${{ steps.filter.outputs.chatbot }}
       nginx: ${{ steps.filter.outputs.nginx }}
-      any_service: ${{ steps.filter.outputs.any_service }}
+      kubernetes-only: ${{ steps.check-k8s.outputs.kubernetes-only }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      
+          fetch-depth: 2
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           base: ${{ github.event.before }}
-          ref: ${{ github.event.after }}
           filters: |
             builder:
               - 'backend/builder-service/**'
@@ -36,87 +38,294 @@ jobs:
             nginx:
               - 'backend/nginx/**'
               - 'front/**'
-            any_service:
-              - 'backend/builder-service/**'
-              - 'backend/catalogue-service/**'
-              - 'backend/chatbot-microservice/**'
-              - 'backend/nginx/**'
-              - 'front/**'
+            kubernetes:
+              - 'backend/kubernetes/**'
+      - name: Check if only kubernetes changed
+        id: check-k8s
+        run: |
+          if [ "${{ steps.filter.outputs.kubernetes }}" == "true" ] && \
+             [ "${{ steps.filter.outputs.builder }}" == "false" ] && \
+             [ "${{ steps.filter.outputs.catalogue }}" == "false" ] && \
+             [ "${{ steps.filter.outputs.chatbot }}" == "false" ] && \
+             [ "${{ steps.filter.outputs.nginx }}" == "false" ]; then
+            echo "kubernetes-only=true" >> $GITHUB_OUTPUT
+          else
+            echo "kubernetes-only=false" >> $GITHUB_OUTPUT
+          fi
 
   build-push-builder:
     needs: detect-changes
-    if: needs.detect-changes.outputs.builder == 'true'
+    if: needs.detect-changes.outputs.builder == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/builder-service
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push Builder Service
+
+      - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest backend/builder-service
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ steps.bump.outputs.version }} backend/builder-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/builder-service:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: builder-version
+          path: backend/builder-service/VERSION
 
   build-push-catalogue:
     needs: detect-changes
-    if: needs.detect-changes.outputs.catalogue == 'true'
+    if: needs.detect-changes.outputs.catalogue == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/catalogue-service
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push Catalogue Service
+
+      - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest backend/catalogue-service
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ steps.bump.outputs.version }} backend/catalogue-service
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/catalogue-service:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-version
+          path: backend/catalogue-service/VERSION
 
   build-push-chatbot:
     needs: detect-changes
-    if: needs.detect-changes.outputs.chatbot == 'true'
+    if: needs.detect-changes.outputs.chatbot == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/chatbot-microservice
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Build and Push Chatbot Microservice
+
+      - name: Build and Push
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest backend/chatbot-microservice
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ steps.bump.outputs.version }} backend/chatbot-microservice
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-microservice:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chatbot-version
+          path: backend/chatbot-microservice/VERSION
 
   build-push-nginx:
     needs: detect-changes
-    if: needs.detect-changes.outputs.nginx == 'true'
+    if: needs.detect-changes.outputs.nginx == 'true' && needs.detect-changes.outputs.kubernetes-only == 'false'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Bump VERSION
+        id: bump
+        run: |
+          cd backend/nginx
+          CURRENT=$(cat VERSION)
+          NEW=$(bash ../script/new_version.sh "$CURRENT")
+          echo "$NEW" > VERSION
+          echo "version=$NEW" >> $GITHUB_OUTPUT
+
       - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Build Frontend and Nginx Image
+
+      - name: Build frontend
         run: |
           cd front
-          npm i
+          npm ci
           npm run build
-          cd ../backend
-          cp -r ../front/dist/* ./nginx/frontend-build/
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:latest nginx
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:latest
+
+      - name: Copy frontend build to nginx
+        run: |
+          rm -rf backend/nginx/frontend-build/*
+          cp -r front/dist/* backend/nginx/frontend-build/
+
+      - name: Build and Push
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }} backend/nginx
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/nginx:${{ steps.bump.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nginx-version
+          path: backend/nginx/VERSION
+
+  commit-versions:
+    needs: [detect-changes, build-push-builder, build-push-catalogue, build-push-chatbot, build-push-nginx]
+    if: always() && needs.detect-changes.outputs.kubernetes-only == 'false' && (needs.build-push-builder.result == 'success' || needs.build-push-catalogue.result == 'success' || needs.build-push-chatbot.result == 'success' || needs.build-push-nginx.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download builder version
+        if: needs.build-push-builder.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: builder-version
+          path: backend/builder-service/
+
+      - name: Download catalogue version
+        if: needs.build-push-catalogue.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: catalogue-version
+          path: backend/catalogue-service/
+
+      - name: Download chatbot version
+        if: needs.build-push-chatbot.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: chatbot-version
+          path: backend/chatbot-microservice/
+
+      - name: Download nginx version
+        if: needs.build-push-nginx.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: nginx-version
+          path: backend/nginx/
+
+      - name: Update staging kustomization
+        run: |
+          cd backend/kubernetes/overlays/staging
+          
+          if [ "${{ needs.build-push-builder.result }}" == "success" ]; then
+            VER=$(cat ../../../builder-service/VERSION)
+            sed -i "/name: shanedonnelly34\/builder-service/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-catalogue.result }}" == "success" ]; then
+            VER=$(cat ../../../catalogue-service/VERSION)
+            sed -i "/name: shanedonnelly34\/catalogue-service/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-chatbot.result }}" == "success" ]; then
+            VER=$(cat ../../../chatbot-microservice/VERSION)
+            sed -i "/name: shanedonnelly34\/chatbot-microservice/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+          
+          if [ "${{ needs.build-push-nginx.result }}" == "success" ]; then
+            VER=$(cat ../../../nginx/VERSION)
+            sed -i "/name: shanedonnelly34\/nginx/{n;s/newTag: .*/newTag: \"$VER\"/}" kustomization.yaml
+          fi
+
+      - name: Commit all changes
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          git commit -m "ci: bump versions [skip ci]" || echo "No changes"
+          git push
+
+  deploy-staging:
+    needs: [detect-changes, commit-versions]
+    if: always() && (needs.commit-versions.result == 'success' || needs.detect-changes.outputs.kubernetes-only == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Pull latest changes
+        run: git pull origin dev
+
+      - name: Create secrets.yaml
+        run: |
+          cat > backend/kubernetes/base/secrets.yaml << EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: app-secrets
+          type: Opaque
+          stringData:
+            POSTGRES_PASSWORD: "${{ secrets.POSTGRES_PASSWORD }}"
+            PGADMIN_DEFAULT_PASSWORD: "${{ secrets.PGADMIN_DEFAULT_PASSWORD }}"
+            MINIO_ROOT_PASSWORD: "${{ secrets.MINIO_ROOT_PASSWORD }}"
+            SECRET_KEY: "${{ secrets.SECRET_KEY }}"
+            OPENROUTER_KEY: "${{ secrets.OPENROUTER_KEY }}"
+          EOF
+
+      - name: Deploy to staging
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: apply -k backend/kubernetes/overlays/staging
+
+      - name: Wait for postgres
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: wait --for=condition=ready pod -l app=postgres -n sitebuilder-staging --timeout=180s
+
+      - name: Wait for minio
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: wait --for=condition=ready pod -l app=minio -n sitebuilder-staging --timeout=180s
+
+      - name: Show deployment status
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: get pods -n sitebuilder-staging
+
+      - name: Show ingress
+        uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: get ingress -n sitebuilder-staging

@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: builder-service
-        image: shanedonnelly34/builder-service:latest
+        image: shanedonnelly34/builder-service
         ports:
         - containerPort: 8000
         env:

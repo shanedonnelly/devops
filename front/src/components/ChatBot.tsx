@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { chatbotApi } from "../services/chatbot";
 import "./ChatBot.css";
 
 interface Message {
   from: "user" | "bot";
   text: string;
-}
-
-interface ChatResponse {
-  response: string;
 }
 
 export default function ChatBot() {
@@ -20,11 +17,9 @@ export default function ChatBot() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Extract site string ID from URL
   useEffect(() => {
     const pathParts = location.pathname.split('/');
     const lastPart = pathParts[pathParts.length - 1];
-    // Check if we're on a public site page (format: /devops/shanify/site-string-id)
     if (pathParts.length >= 3 && pathParts[1] === 'devops' && pathParts[2] === 'shanify' && lastPart) {
       setSiteId(lastPart);
     }
@@ -43,24 +38,12 @@ export default function ChatBot() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost/devops/api/chatbot/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: query,
-          state: null,
-          site_id: siteId,
-        }),
+      const data = await chatbotApi.sendMessage({
+        query,
+        state: null,
+        site_id: siteId,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: ChatResponse = await response.json();
-      
       const botMessage: Message = {
         from: "bot",
         text: data.response,
@@ -91,14 +74,12 @@ export default function ChatBot() {
 
   return (
     <>
-      {/* 🟡 Bulle flottante */}
       {!open && (
         <button className="chat-bubble" onClick={() => setOpen(true)}>
           💬
         </button>
       )}
 
-      {/* 💬 Fenêtre du chatbot */}
       {open && (
         <div className="chat-window">
           <div className="chat-header">

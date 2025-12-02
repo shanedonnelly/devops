@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: catalogue-service
-        image: shanedonnelly34/catalogue-service:latest
+        image: shanedonnelly34/catalogue-service
         ports:
         - containerPort: 8000
         env:

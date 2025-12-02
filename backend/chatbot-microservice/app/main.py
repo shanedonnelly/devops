@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fuzzywuzzy import process
+import re
+
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_KEY")
@@ -45,29 +47,13 @@ class ChatResponse(BaseModel):
 CLASSIFICATION_SCHEMA = {
     "type": "object",
     "properties": {
-        "intent": {"type": "string", "enum": ["ORDER_STATUS", "CATALOG_SEARCH", "REFUND", "GREETING", "HELP", "OTHER"]},
+        "intent": {"type": "string", "enum": ["CATALOG_SEARCH", "RECOMMENDATION", "GREETING", "HELP", "OTHER"]},
         "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0}
     },
     "required": ["intent", "confidence"]
 }
 
 ACTION_SCHEMAS = {
-    "ORDER_STATUS": {
-        "type": "object",
-        "properties": {
-            "action_type": {"type": "string", "enum": ["CHECK_ORDER_STATUS"]},
-            "order_id": {"type": "string", "description": "The order ID, e.g., ORD-2024-1003. Extract null if not provided."}
-        },
-        "required": ["action_type", "order_id"]
-    },
-    "REFUND": {
-        "type": "object",
-        "properties": {
-            "action_type": {"type": "string", "enum": ["REQUEST_REFUND"]},
-            "order_id": {"type": "string", "description": "The order ID, e.g., ORD-2024-1008. Extract null if not provided."}
-        },
-        "required": ["action_type", "order_id"]
-    },
     "CATALOG_SEARCH": {
         "type": "object",
         "properties": {
@@ -83,9 +69,6 @@ PRODUCT_CATALOG = {
 
 }
 
-ORDER_DB = {
-
-}
 PRODUCT_NAMES = list(PRODUCT_CATALOG.keys())
 
 # --- Catalogue service wiring ---
@@ -184,77 +167,224 @@ def _flatten_products_from_catalogue(cat: dict) -> list:
             products.append(prod)
     return products
 
+# --- Recommendation helpers ---
+def _format_catalogue_for_prompt(products: list) -> str:
+    """Format up to the first 60 products into a compact string for LLM prompts.
+
+    Each line: - Product Name ($Price): Description [Category]
+    """
+    if not products:
+        return "(no products available)"
+
+    lines = []
+    for p in products[:60]:
+        name = p.get("name") or "<unknown>"
+        price = p.get("price")
+        price_str = f"(${price})" if price is not None else ""
+        desc = p.get("description") or ""
+        cat = p.get("category") or ""
+        line = f"- {name} {price_str}: {desc} [{cat}]"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def get_vibe_recommendation(user_query: str, site_id: str) -> str:
+    """Return a Markdown-formatted recommendation list (1-3 items) matching the user's vibe.
+
+    Uses the LLM to score/pick the best matches from the site's catalogue (limited to 60 items).
+    """
+    # Fetch site index (cached) and fall back to local PRODUCT_CATALOG
+    idx = None
+    if site_id:
+        idx = ensure_site_index(site_id)
+
+    products = []
+    if idx:
+        products = idx.get("products", [])
+    else:
+        # build from local PRODUCT_CATALOG
+        for name, d in PRODUCT_CATALOG.items():
+            products.append({"name": name, "description": d.get("description", ""), "price": d.get("price"), "category": d.get("category", "")})
+
+    if not products:
+        return "**Recommendations:**\n\n_I'm sorry — I couldn't find the site's catalogue to make recommendations right now._"
+
+    inventory_text = _format_catalogue_for_prompt(products)
+
+    system_prompt = f"""
+    You are a product recommender assistant. Given a short inventory list and a user's "vibe" or description,
+    pick the top 1 to 3 items that best match the vibe. Ignore items that clearly don't match.
+
+    Inventory (first 60 items):
+    {inventory_text}
+
+    Respond only with a JSON object matching the schema:
+    {{"recommendations": [{{"name": "...", "reason": "..."}}]}}
+
+    The "reason" should be a short sentence explaining why the item fits the vibe.
+    """
+
+    result = get_json_response(system_prompt, user_query)
+    if not result:
+        return "**Recommendations:**\n\n_Sorry — I couldn't reach the recommendation model right now._"
+
+    recs = result.get("recommendations") if isinstance(result, dict) else None
+    if not recs:
+        return "**Recommendations:**\n\n_No suitable recommendations were returned._"
+
+    # Build a compact, consistent Markdown output (max 3 recommendations)
+    name_to_product = {p.get("name"): p for p in products}
+
+    def _clean_text(s: str, max_len: int = 140) -> str:
+        if not s:
+            return ""
+        # remove code fences and inline code
+        s = re.sub(r'```.*?```', '', s, flags=re.S)
+        s = re.sub(r'`(.+?)`', r'\1', s, flags=re.S)
+        # remove bold/italic markers (**text**, *text*, __text__, _text_)
+        s = re.sub(r'(\*\*|__)(.*?)\1', r'\2', s, flags=re.S)
+        s = re.sub(r'(\*|_)(.*?)\1', r'\2', s, flags=re.S)
+        # remove any leftover stray asterisks
+        s = s.replace('*', '')
+        # normalize dash characters to a single em-dash marker for splitting
+        s = re.sub(r'[\u2012\u2013\u2014\u2015]+', ' — ', s)
+        # collapse whitespace
+        s = ' '.join(s.split())
+        # trim surrounding punctuation and separators
+        s = s.strip(' \t\n\r-–—,:;')
+        # truncate if necessary
+        if len(s) > max_len:
+            s = s[: max_len - 3].rstrip() + '...'
+        return s
+
+    # Plain text header (no markdown)
+    header_query = _clean_text(user_query, max_len=120)
+    header = f"Recommendations for \"{header_query}\""
+
+    lines = [header]
+    for idx, r in enumerate(recs[:3], start=1):
+        raw_name = r.get('name') or '<unknown>'
+        name = _clean_text(raw_name)
+        reason = _clean_text(r.get('reason') or '')
+
+        # try to find product by original name first, then by cleaned name
+        prod = name_to_product.get(raw_name) or name_to_product.get(name)
+
+        category = prod.get('category') if prod else None
+        price = prod.get('price') if prod else None
+        price_str = ''
+        if price is not None and price != '':
+            try:
+                price_val = float(price)
+                price_str = f'${price_val:.2f}'
+            except Exception:
+                price_str = f'${price}'
+
+        # Build plain numbered item
+        item_core = name
+        extras = []
+        if category:
+            extras.append(str(category))
+        if price_str:
+            extras.append(price_str)
+        if extras:
+            item_core += ' (' + ', '.join(extras) + ')'
+        if reason:
+            item_core += ' — ' + reason
+
+        lines.append(f"{idx}. {item_core}")
+
+    return '\n'.join(lines)
 # --- Core Chatbot Logic ---
 
 def get_json_response(system_prompt: str, user_query: str) -> dict | None:
     """Helper function to get a JSON response from the configured model endpoint.
 
-    Uses the OpenAI/OpenRouter client configured via environment variables.
+    Runs the model call inside a worker thread with a short timeout to avoid
+    blocking the FastAPI worker and causing upstream nginx 504s when the
+    model or network is slow or unresponsive.
     """
-    try:
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+    # inner callable that performs the model request (optionally with response_format)
+    def _call_model(use_response_format: bool):
         # small pause to avoid bursting requests to the upstream model
-        time.sleep(2)
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            extra_body={
-                "models":["nvidia/nemotron-nano-9b-v2:free","nousresearch/hermes-3-llama-3.1-405b:free"],
-            },
-            messages=[
+        time.sleep(1)
+        kwargs = {
+            "model": MODEL_NAME,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_query}
             ],
-            response_format={"type": "json_object"}, 
-            temperature=0.0
-        )
-        content = response.choices[0].message.content
-        if content.startswith("```json"):
-            content = content[7:-3].strip()
-        return json.loads(content)
-        
-    except Exception as e:
-        print(f"Error calling model ({MODEL_NAME}): {e}")
-        try:
-            print("Retrying query without 'response_format'...")
-            # pause before retry to avoid immediate repeated requests
-            time.sleep(2)
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_query}
-                ],
-                temperature=0.0
-            )
-            content = response.choices[0].message.content
-            if content.startswith("```json"):
-                content = content[7:-3].strip()
-            return json.loads(content)
-        except Exception as retry_e:
-            print(f"Error on retry: {retry_e}")
-            return None
+            "temperature": 0.0,
+        }
+        if use_response_format:
+            # prefer structured JSON response when available
+            kwargs["response_format"] = {"type": "json_object"}
+            kwargs["extra_body"] = {
+                "models": ["nvidia/nemotron-nano-9b-v2:free", "nousresearch/hermes-3-llama-3.1-405b:free"],
+            }
+
+        resp = client.chat.completions.create(**kwargs)
+        return resp
+
+    # Limit how long we'll wait for any single model attempt (seconds)
+    MODEL_TIMEOUT = int(os.getenv("CHATBOT_MODEL_TIMEOUT", "8"))
+
+    with ThreadPoolExecutor(max_workers=1) as ex:
+        # Try with structured response first, then fallback without structured format
+        for use_fmt in (True, False):
+            future = ex.submit(_call_model, use_fmt)
+            try:
+                response = future.result(timeout=MODEL_TIMEOUT)
+            except FuturesTimeout:
+                print(f"Model call timed out after {MODEL_TIMEOUT}s (use_response_format={use_fmt})")
+                # cancel and try next fallback
+                try:
+                    future.cancel()
+                except Exception:
+                    pass
+                continue
+            except Exception as e:
+                print(f"Error calling model (attempt use_response_format={use_fmt}): {e}")
+                continue
+
+            try:
+                content = response.choices[0].message.content
+                if isinstance(content, str) and content.startswith("```json"):
+                    content = content[7:-3].strip()
+                return json.loads(content)
+            except Exception as parse_e:
+                print(f"Error parsing model response: {parse_e}")
+                # try next fallback
+                continue
+
+    # If all attempts fail, return None so caller can respond quickly
+    return None
 
 def classify_intent(user_query: str) -> dict:
-    """Classifies user intent using a more robust 'few-shot' prompt."""
-    
-    # (UPDATED) Added REFUND examples
+    """Classifies user intent using a few-shot prompt (catalog search, help, greeting, other)."""
+
     system_prompt = f"""
     You are an expert intent classification agent. Classify the user's query
-    into one of the following intents: ORDER_STATUS, REFUND, CATALOG_SEARCH, GREETING, HELP, OTHER.
+    into one of the following intents: CATALOG_SEARCH, RECOMMENDATION, GREETING, HELP, OTHER.
+
+    Use RECOMMENDATION when the user describes a need, occasion, feeling, or vague request
+    that is best served by suggesting products (examples: "something for a party",
+    "a gift for dad", "summer vibe outfit").
 
     Here are some examples:
     User: "Hello there!" -> {{"intent": "GREETING", "confidence": 1.0}}
-    User: "Where is my package ORD-2024-1002?" -> {{"intent": "ORDER_STATUS", "confidence": 1.0}}
     User: "Do you sell smartwatches?" -> {{"intent": "CATALOG_SEARCH", "confidence": 1.0}}
-    User: "I want a refund." -> {{"intent": "REFUND", "confidence": 1.0}}
-    User: "I need to return order 1008" -> {{"intent": "REFUND", "confidence": 1.0}}
+    User: "I need a gift for my dad, something practical" -> {{"intent": "RECOMMENDATION", "confidence": 1.0}}
+    User: "something for a party" -> {{"intent": "RECOMMENDATION", "confidence": 1.0}}
     User: "help" -> {{"intent": "HELP", "confidence": 1.0}}
-    User: "What can you do?" -> {{"intent": "HELP", "confidence": 1.0}}
     User: "What's the weather?" -> {{"intent": "OTHER", "confidence": 1.0}}
 
     Respond *only* with a valid JSON object matching this schema:
     {json.dumps(CLASSIFICATION_SCHEMA)}
     """
-    
+
     result = get_json_response(system_prompt, user_query)
     if result:
         return result
@@ -267,19 +397,7 @@ def extract_action(intent: str, user_query: str) -> dict:
         return {"action_type": "NO_ACTION"}
 
     examples = ""
-    if intent == "ORDER_STATUS":
-        examples = """
-        Here are some examples:
-        User: "Where is my package ORD-2024-1002?" -> {"action_type": "CHECK_ORDER_STATUS", "order_id": "ORD-2024-1002"}
-        User: "Status update for ord-2024-1003 please." -> {"action_type": "CHECK_ORDER_STATUS", "order_id": "ORD-2024-1003"}
-        """
-    elif intent == "REFUND":
-        examples = """
-        Here are some examples:
-        User: "I need a refund for my order." -> {"action_type": "REQUEST_REFUND", "order_id": null}
-        User: "I want to return order ORD-2024-1008." -> {"action_type": "REQUEST_REFUND", "order_id": "ORD-2024-1008"}
-        """
-    elif intent == "CATALOG_SEARCH":
+    if intent == "CATALOG_SEARCH":
         examples = """
         Here are some examples:
         User: "Tell me about the AstroWatch" -> {"action_type": "GET_PRODUCT_INFO", "product_name": "AstroWatch"}
@@ -295,7 +413,7 @@ def extract_action(intent: str, user_query: str) -> dict:
     Respond *only* with a valid JSON object matching this schema:
     {json.dumps(schema)}
     """
-    
+
     result = get_json_response(system_prompt, user_query)
     if result:
         return result
@@ -303,39 +421,7 @@ def extract_action(intent: str, user_query: str) -> dict:
 
 # --- Logic Functions ---
 
-def do_check_order_status(order_id: str) -> str:
-    """Looks up an order and returns a response string."""
-    if not order_id or order_id == "null":
-        return "I can't seem to find an order ID. Please provide an ID (e.g., ORD-2024-1001)."
-
-    order_id = order_id.upper()
-    if order_id in ORDER_DB:
-        order = ORDER_DB[order_id]
-        return f"✅ Order {order_id} is currently {order['status']}."
-    else:
-        return f"⚠️ I couldn't find an order with the ID '{order_id}'. Please check the ID."
-
-def do_refund(order_id: str) -> str:
-    """Handles the business logic for a refund request."""
-    if not order_id or order_id == "null":
-        # This case should be handled by the state machine, but as a fallback:
-        return "I can't seem to find an order ID. Please provide an ID (e.g., ORD-2024-1001)."
-
-    order_id = order_id.upper()
-    if order_id not in ORDER_DB:
-        return f"⚠️ I couldn't find an order with the ID '{order_id}'. Please check the ID."
-
-    status = ORDER_DB[order_id]["status"]
-    if status == "Cancelled":
-        return f"✅ Order {order_id} is already cancelled. No refund is necessary."
-    if status == "Delivered":
-        return f"✅ Order {order_id} was delivered. I have started a return request for you. Please check your email for a shipping label."
-    if status == "Processing":
-        ORDER_DB[order_id]["status"] = "Cancelled" # Mock update
-        return f"✅ Order {order_id} is still 'Processing'. I have successfully cancelled the order and a refund will be issued."
-    if status == "Shipped":
-        return f"⚠️ Order {order_id} has already 'Shipped'. Please wait for the item to be delivered, then contact us for a return."
-    return "I'm not sure how to handle a refund for this order. Let me get a human agent."
+# Order-related functionality removed: orders/refunds are not implemented.
 
 def do_get_product_info(product_name: str, site_id: str | None = None) -> str:
     """Looks up a product and returns a response string."""
@@ -431,18 +517,7 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
     # --- Step 1: Handle any existing state FIRST ---
     # This is the most important part.
     
-    if state == "AWAITING_ORDER_ID_FOR_STATUS":
-        # The user's query is the order ID.
-        # We completely bypass classification.
-        response = do_check_order_status(user_query)
-        return response, None # Clear state after handling
-    
-    if state == "AWAITING_ORDER_ID_FOR_REFUND":
-        # The user's query is the order ID.
-        # We bypass classification and run the refund logic.
-        response = do_refund(user_query)
-        return response, None # Clear state after handling
-        
+    # No order state handling — orders/refunds not implemented
     if state == "AWAITING_PRODUCT_NAME":
         # The user's query is the product name.
         response = do_get_product_info(user_query, site_id)
@@ -456,29 +531,32 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
     intent_obj = classify_intent(user_query)
     intent = intent_obj.get("intent", "OTHER")
 
+    # --- New: Recommendation intent ---
+    if intent == "RECOMMENDATION":
+        # Try to derive site_id from environment or passed-in parameter
+        use_site = site_id or CHATBOT_SITE_ID
+        md = get_vibe_recommendation(user_query, use_site)
+        return md, None
+
     if intent == "GREETING":
         response = "👋 Hello! How can I assist you today?"
         return response, None
 
-    # (NEW) Full help text
+    # Full help text (orders not supported)
     if intent == "HELP":
         response = (
             "I am a customer service assistant. Here is what I can do for you:\n\n"
-            "**📦 Order Support**\n"
-            "You can ask me to check the status of an order or request a refund.\n"
-            "*Example: 'Where is my order?'*\n"
-            "*Example: 'I need to return order ORD-2024-1008'*\n\n"
             "**🛍️ Product Catalog**\n"
             "You can ask me about any product we sell, or ask for items by category.\n"
             "*Example: 'Tell me about the AstroWatch'*\n"
             "*Example: 'Do you sell any headphones?'*\n\n"
-            "If I need more information, like an order ID, I will ask you for it. "
-            "You can then just provide the missing info in your next message."
+            "If I need more information to answer, I will ask you for it. "
+            "You can then provide the missing info in your next message."
         )
         return response, None
 
     if intent == "OTHER":
-        response = "🤔 I'm sorry, I can only help with order status, refunds, or product questions."
+        response = "🤔 I'm sorry, I can only help with product questions or provide general help."
         return response, None
 
     # --- Step 3: Extract action for new, valid intents ---
@@ -486,23 +564,7 @@ def chatbot_main(user_query: str, state: str | None, site_id: str | None = None)
     action = extract_action(intent, user_query)
     action_type = action.get("action_type")
     
-    if action_type == "CHECK_ORDER_STATUS":
-        order_id = action.get("order_id")
-        if not order_id or order_id == "null":
-            # (FIX) Set the specific state
-            response = "I can help with that! What is your order ID (e.g., ORD-2024-1001)?"
-            return response, "AWAITING_ORDER_ID_FOR_STATUS" 
-        response = do_check_order_status(order_id)
-        return response, None
-
-    if action_type == "REQUEST_REFUND":
-        order_id = action.get("order_id")
-        if not order_id or order_id == "null":
-            # (FIX) Set the specific state
-            response = "I can help with your refund. What is the order ID?"
-            return response, "AWAITING_ORDER_ID_FOR_REFUND"
-        response = do_refund(order_id)
-        return response, None
+    # No order/refund actions — unsupported
 
     if action_type == "GET_PRODUCT_INFO":
         product_name = action.get("product_name")
@@ -531,7 +593,7 @@ def _derive_site_id(request: Request, body_site_id: str | None) -> str | None:
     if body_site_id:
         return body_site_id
 
-    # query params
+    # 1) Query params (explicit)
     try:
         qp = request.query_params
         for key in ("site_id", "site", "sid"):
@@ -540,7 +602,7 @@ def _derive_site_id(request: Request, body_site_id: str | None) -> str | None:
     except Exception:
         pass
 
-    # headers
+    # 2) Explicit headers
     try:
         headers = request.headers
         for key in ("x-site-id", "x-site", "x-siteid"):
@@ -550,21 +612,56 @@ def _derive_site_id(request: Request, body_site_id: str | None) -> str | None:
     except Exception:
         pass
 
-    # referer
+    # 3) Heuristics: look through referer/origin/x-forwarded-prefix/x-original-uri
     try:
-        ref = request.headers.get("referer") or request.headers.get("Referer")
-        if ref:
-            from urllib.parse import urlparse
-            path = urlparse(ref).path or ""
-            # split and look for 'shanify' marker
-            parts = [p for p in path.split('/') if p]
-            for i, seg in enumerate(parts):
-                if seg.lower() == "shanify" and (i + 1) < len(parts):
-                    return parts[i + 1]
-            # fallback: if pattern contains 'devops', try after it when 'shanify' missing
-            for i, seg in enumerate(parts):
-                if seg.lower() == "devops" and (i + 2) < len(parts) and parts[i + 1].lower() == "shanify":
-                    return parts[i + 2]
+        candidates = []
+        h = request.headers
+        for header_name in ("referer", "Referer", "origin", "Origin", "x-forwarded-prefix", "x-original-uri", "x-forwarded-uri", "x-original-url", "x-rewrite-url"):
+            v = h.get(header_name)
+            if v:
+                candidates.append(v)
+
+        # Also check forwarded header (may contain a URI)
+        fwd = h.get("forwarded")
+        if fwd:
+            candidates.append(fwd)
+
+        # Check request.url.path + root_path (some proxies set root_path)
+        try:
+            path_candidate = str(request.url)
+            if path_candidate:
+                candidates.append(path_candidate)
+        except Exception:
+            pass
+
+        import re
+        from urllib.parse import urlparse
+
+        for cand in candidates:
+            try:
+                # Clean candidate (if it's a forwarded header, try to extract URL-like parts)
+                # Try to find '/shanify/<siteId>' anywhere in the candidate string
+                m = re.search(r"/shanify/([^/?#\\s]+)", cand, re.IGNORECASE)
+                if m:
+                    return m.group(1)
+
+                # Try a slightly broader pattern: '/devops/shanify/<id>' or '/devops/<something>/shanify/<id>'
+                m2 = re.search(r"/devops(?:/[^/]+)*/shanify/([^/?#\\s]+)", cand, re.IGNORECASE)
+                if m2:
+                    return m2.group(1)
+
+                # If candidate looks like a full URL, parse its path and try the segment approach
+                try:
+                    parsed = urlparse(cand)
+                    path = parsed.path or ""
+                    parts = [p for p in path.split('/') if p]
+                    for i, seg in enumerate(parts):
+                        if seg.lower() == 'shanify' and (i + 1) < len(parts):
+                            return parts[i + 1]
+                except Exception:
+                    pass
+            except Exception:
+                continue
     except Exception:
         pass
 
