@@ -61,7 +61,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git add backend/kubernetes/overlays/production/kustomization.yaml
           git diff --cached --quiet || git commit -m "ci(prod): sync image tags from staging [skip ci]"
-          git push
+          git push origin main
+          git push origin main:dev
 
   deploy-production:
     runs-on: ubuntu-latest
