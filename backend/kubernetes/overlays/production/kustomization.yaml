@@ -22,4 +22,4 @@ images:
   - name: shanedonnelly34/chatbot-microservice
     newTag: "1.1"
   - name: shanedonnelly34/nginx
-    newTag: "1.1"
+    newTag: "1.6"
