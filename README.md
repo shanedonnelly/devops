@@ -9,8 +9,6 @@ Il est structuré autour de trois grands axes : **Backend**, **Frontend**, et **
 devops-main/
 │── backend/           # Code backend, API, exemples d’automatisation, CI/CD backend
 │── front/             # Code frontend, interfaces web, démonstrations
-│── instructions/      # Guides de travaux pratiques, consignes, exercices DevOps
-│── tutos/             # Tutoriels étape par étape (Docker, K8s, GitHub Actions…)
 │── .github/           # Workflows CI/CD (GitHub Actions)
 │── README.md          # Documentation principale
 ```
@@ -27,7 +25,7 @@ Le projet vise à fournir une vision complète des outils et pratiques DevOps :
 * Livraison Continue (CD)
 * Automatisation backend (API, scripts, pipelines)
 * Déploiement d’une application frontend
-* Bonne gestion du versionnement (Git, GitHub Flow)
+* Bonne gestion du versionnement (Docker Image Tags)
 
 ---
 
@@ -40,7 +38,8 @@ Contient :
 * Code source backend (API, microservices, scripts)
 * Dockerfiles
 * Pipelines d’automatisation
-* Configuration pour exécution locale et en CI
+* Configuration pour exécution locale et
+* Manifest Kubernetes de configuration de production
 
 ### **front/**
 
@@ -49,25 +48,6 @@ Propose :
 * Interfaces web ou dashboard
 * Démonstrations déployables via CI/CD
 * Environnements configurés pour servir l’application
-
-### **instructions/**
-
-Inclut :
-
-* Travaux pratiques
-* Sujets d’examen ou d’évaluation
-* Fiches de route (roadmaps)
-* Consignes pour installer, configurer et livrer des projets DevOps
-
-### **tutos/**
-
-Contient plusieurs tutoriels :
-
-* Installation et prise en main Docker
-* Création d’images et optimisation
-* Introduction à Kubernetes
-* Workflows CI/CD complets
-* Déploiements automatisés
 
 ### **.github/**
 
@@ -118,22 +98,7 @@ Le dépôt intègre :
 
 * Tests automatisés
 * Build automatisé des images Docker
-* Linting
-* Vérification de qualité de code
 * Déploiement automatique (si configuré)
 
 Les workflows se trouvent dans :
 `.github/workflows/`
-
----
-
-## 7. Contribution
-
-1. Forker le repository
-2. Créer une branche :
-
-   ```
-   git checkout -b feature/ma-feature
-   ```
-3. Commit + push
-4. Ouvrir une Pull Request
