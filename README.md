@@ -1,104 +1,111 @@
-# DEVOPS PROJECT
+# DevOps Project - Shanify Site Builder
 
-Ce dépôt contient un ensemble de ressources, tutoriels, instructions et projets complets liés aux pratiques DevOps modernes.
-Il est structuré autour de trois grands axes : **Backend**, **Frontend**, et **Documentation pédagogique**.
+Ce dépôt contient l'ensemble du code source et de l'infrastructure DevOps pour **Shanify**, une plateforme SaaS de création de sites e-commerce.
 
-## 1. Structure du projet
+## 1. Description du Produit
 
-```
-devops-main/
-│── backend/           # Code backend, API, exemples d’automatisation, CI/CD backend
-│── front/             # Code frontend, interfaces web, démonstrations
-│── .github/           # Workflows CI/CD (GitHub Actions)
-│── README.md          # Documentation principale
-```
+Shanify est une application complète permettant aux utilisateurs de créer et gérer leurs propres boutiques en ligne. Le flux utilisateur est le suivant :
 
----
+1.  **Authentification** : Inscription et connexion sécurisées.
+2.  **Dashboard** : Gestion des sites existants et création de nouveaux sites (génération d'ID unique).
+3.  **Éditeur de Site** : Configuration de l'apparence (titre, description, template CSS) et gestion du catalogue produits (catégories, produits, variants).
+4.  **Site Public** : Génération automatique d'une URL publique (`/public_site/{id}`) affichant le site configuré pour les clients finaux.
+5.  **Assistant IA** : Un chatbot intégré pour assister l'utilisateur.
 
-## 2. Objectifs pédagogiques
-
-Le projet vise à fournir une vision complète des outils et pratiques DevOps :
-
-* Conteneurisation avec Docker
-* Orchestration (Kubernetes, docker-compose)
-* Intégration Continue (CI) avec GitHub Actions
-* Livraison Continue (CD)
-* Automatisation backend (API, scripts, pipelines)
-* Déploiement d’une application frontend
-* Bonne gestion du versionnement (Docker Image Tags)
+L'architecture repose sur des microservices (Builder, Catalogue, Chatbot) communiquant via des API REST, avec un stockage de fichiers sur MinIO et des données sur PostgreSQL.
 
 ---
 
-## 3. Description des principaux dossiers
+## 2. Objectifs Pédagogiques
+
+Le projet vise à fournir une vision complète des outils et pratiques DevOps modernes :
+
+*   **Conteneurisation** avec Docker (Images optimisées, Multi-stage builds).
+*   **Orchestration** locale avec Docker Compose et production avec Kubernetes.
+*   **Intégration Continue (CI)** avec GitHub Actions (Tests unitaires, E2E, Build).
+*   **Livraison Continue (CD)** avec gestion des environnements (Staging vs Production).
+*   **Infrastructure as Code** via Kustomize.
+*   **Bonne gestion du versionnement** (Semantic Versioning, Docker Image Tags).
+
+---
+
+## 3. Structure du Projet
+
+### **.github/workflows/**
+Les pipelines d'automatisation CI/CD :
+```text
+.github/workflows/
+├── ci.yml              # Pipeline d'Intégration Continue (Tests unitaires, E2E, Build check) déclenché sur les Pull Requests.
+├── cd_docker_push.yml  # Pipeline de Livraison (Build & Push DockerHub) déclenché sur la branche 'dev'.
+└── cd_prod.yml         # Pipeline de Déploiement Production (Sync tags staging -> prod) déclenché sur la branche 'main'.
+```
 
 ### **backend/**
+Le cœur de l'application, divisé en microservices et configurations d'infrastructure :
 
-Contient :
+*   **builder-service/** : Service Python/FastAPI gérant la configuration des sites et l'authentification.
+*   **catalogue-service/** : Service Python/FastAPI gérant les produits, catégories et stocks.
+*   **chatbot-microservice/** : Service d'IA pour l'assistance utilisateur.
+*   **nginx/** : Configuration du Reverse Proxy et serveur statique pour le frontend en production.
+*   **script/** : Scripts utilitaires pour la gestion locale (build, start, logs, versioning).
+*   **docker-compose.yaml** : Orchestration de l'environnement de développement local.
 
-* Code source backend (API, microservices, scripts)
-* Dockerfiles
-* Pipelines d’automatisation
-* Configuration pour exécution locale et
-* Manifest Kubernetes de configuration de production
+### **backend/kubernetes/**
+Configuration complète pour le déploiement sur cluster Kubernetes, utilisant **Kustomize** pour gérer les différences entre environnements :
+
+*   **base/** : Définitions de base des ressources (Deployments, Services, PVC) communes à tous les environnements.
+*   **overlays/** :
+    *   `staging/` : Patchs de configuration spécifiques à l'environnement de test (Ingress, ConfigMaps, Certificats Let's Encrypt Staging).
+    *   `production/` : Patchs pour la production (Domaines réels, Certificats Prod).
+*   **Scripts de gestion** : start_staging.sh, start_production.sh pour déployer facilement les overlays.
 
 ### **front/**
-
-Propose :
-
-* Interfaces web ou dashboard
-* Démonstrations déployables via CI/CD
-* Environnements configurés pour servir l’application
-
-### **.github/**
-
-Comprend :
-
-* Workflows GitHub Actions
-* Pipelines CI (tests, build)
-* Pipelines CD (déploiement)
+Application Frontend réalisée avec **React**, **TypeScript** et **Vite**. Elle consomme les API du backend et fournit l'interface utilisateur (Dashboard, Éditeur, Site Public).
 
 ---
 
-## 4. Prérequis
+## 4. Installation et Démarrage Local
 
-* Docker & Docker Compose
-* Git
-* Node.js 
-* Python
-* GitHub Account pour CI/CD
+Pour tester le projet en local, nous utilisons deux terminaux séparés : un pour l'infrastructure backend (Docker) et un pour le frontend (Node.js).
 
----
+### Prérequis
+*   Docker & Docker Compose
+*   Node.js & npm
+*   Git
 
-## 5. Exécution du projet
+### Étape 1 : Configuration de l'environnement
+Dans le dossier backend, créez un fichier `.env` en vous basant sur le modèle fourni.
+*(Référez-vous au fichier .env.example pour les clés nécessaires, les valeurs par défaut suffisent pour le local).*
 
-### **Lancer le backend**
+### Étape 2 : Lancer le Backend (Terminal 1)
+Placez-vous dans le dossier backend et lancez les scripts de démarrage. Cela va construire les images et lancer les conteneurs (Base de données, MinIO, API Services).
 
-```
+```bash
 cd backend
-docker-compose up --build
+# Construit et démarre l'orchestration
+./script/start_docker_compose.sh
 ```
+*Note : Attendez que les services soient "Healthy" ou que les logs indiquent que les serveurs tournent.*
 
-### **Lancer le frontend**
+### Étape 3 : Lancer le Frontend (Terminal 2)
+Lancez le serveur de développement React qui se connectera à votre backend local.
 
-```
+```bash
 cd front
 npm install
 npm run dev
 ```
 
-### **Exécuter les tutoriels**
-
-Chaque tutoriel dans `tutos/` contient ses instructions propres.
+L'application sera accessible (par défaut) sur l'URL indiquée par Vite (ex: `http://localhost:5173`).
 
 ---
 
-## 6. CI/CD
+## 5. Accès aux Services Locaux
 
-Le dépôt intègre :
+Une fois l'environnement démarré via le script backend :
 
-* Tests automatisés
-* Build automatisé des images Docker
-* Déploiement automatique (si configuré)
-
-Les workflows se trouvent dans :
-`.github/workflows/`
+*   **Frontend App** : Via le terminal frontend (`http://localhost:5173`)
+*   **Swagger Builder Service** : `http://localhost/devops/api/builder-service/docs`
+*   **Swagger Catalogue Service** : `http://localhost/devops/api/catalogue-service/docs`
+*   **PgAdmin (BDD)** : `http://localhost/devops/api/pgadmin`
+*   **MinIO Console** : `http://localhost/devops/api/minio`
